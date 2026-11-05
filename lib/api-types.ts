@@ -173,10 +173,10 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
     init?.deviceId ??
     (typeof window !== "undefined" ? window.localStorage.getItem(LS_DEVICE) : null) ??
     "DEV_TUNDE_IPHONE_01";
-  let mode: BushaMode =
+  let mode: BushaMode | null =
     init?.mode ??
     ((typeof window !== "undefined" ? window.localStorage.getItem(LS_MODE) : null) as BushaMode | null) ??
-    "MOCK";
+    ((process.env.NEXT_PUBLIC_BUSHA_API_MODE as BushaMode | undefined) ?? null);
   const baseUrl = init?.baseUrl ?? "";
 
   const setDeviceId = (next: string) => {
@@ -189,13 +189,14 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
   };
 
   async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+    const headers: Record<string, string> = {
+      "Content-Type": "application/json",
+      "x-device-id": deviceId,
+    };
+    if (mode) headers["x-busha-mode"] = mode;
     const res = await fetch(`${baseUrl}${path}`, {
       method,
-      headers: {
-        "Content-Type": "application/json",
-        "x-device-id": deviceId,
-        "x-busha-mode": mode,
-      },
+      headers,
       body: body === undefined ? undefined : JSON.stringify(body),
       cache: "no-store",
     });

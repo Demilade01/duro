@@ -42,3 +42,8 @@ next-env.d.ts
 
 !.env.example
 
+# ai studio artifacts
+.aistudio/
+.aistudio/artifacts/brain/a85586b5-81d3-493f-997b-15713cbaa0ac
+
+

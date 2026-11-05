@@ -1,0 +1,10 @@
+{
+  "name": "Duro — One Wallet, Two Balances",
+  "description": "Zero-paperwork everyday Naira spend (cNGN) and automated dollar shield (USDC) wallet powered by Busha APIs, with SIM-swap velocity guardrails and landlord financial passport.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

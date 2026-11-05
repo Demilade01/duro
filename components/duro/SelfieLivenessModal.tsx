@@ -7,82 +7,62 @@ import {
   RefreshCw,
   ShieldCheck,
   Sparkles,
-  UserCheck,
   VideoOff,
   X,
 } from "lucide-react";
-import { SAMPLE_VERIFIED_SELFIE_BASE64 } from "@/lib/duro-api";
-import { UserProfile } from "@/lib/types";
+import {
+  generateVerifiedSelfiePngDataUrl,
+  useDuro,
+} from "@/components/duro-context";
+import { TUNDE } from "@/lib/demo";
 
-interface SelfieLivenessModalProps {
-  isOpen: boolean;
-  mode: "ONBOARDING" | "RECOVERY";
-  user: UserProfile;
-  activeDeviceId: string;
-  onClose: () => void;
-  onCompleteOnboarding: (payload: {
-    fullName: string;
-    phone: string;
-    email: string;
-    nin: string;
-    selfieImage: string;
-  }) => Promise<void>;
-  onCompleteRecovery: (payload: {
-    nin: string;
-    selfieImage: string;
-  }) => Promise<void>;
-}
+export default function SelfieLivenessModal() {
+  const { wallet, recoveryModalOpen, closeRecoveryModal, recoverIdentity } =
+    useDuro();
 
-export default function SelfieLivenessModal({
-  isOpen,
-  mode,
-  user,
-  activeDeviceId,
-  onClose,
-  onCompleteOnboarding,
-  onCompleteRecovery,
-}: SelfieLivenessModalProps) {
-  const [fullName, setFullName] = useState(user.fullName || "Tunde Bakare");
-  const [phone, setPhone] = useState(user.phone || "+2348099887766");
-  const email = user.email || "tunde.bakare@duro.app";
-  const [nin, setNin] = useState(user.nin || "12345678901");
-
+  const [nin, setNin] = useState<string>(TUNDE.nin);
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [capturedSelfie, setCapturedSelfie] = useState<string | null>(null);
-  const [selfieSource, setSelfieSource] = useState<"WEBCAM" | "SAMPLE" | null>(
-    null
-  );
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
 
-  const releaseMediaTracks = () => {
+  const stopCamera = () => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-  };
-
-  const stopCamera = () => {
-    releaseMediaTracks();
     setCameraActive(false);
   };
 
-  const handleModalClose = () => {
+  useEffect(() => {
+    return () => {
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+      }
+    };
+  }, [recoveryModalOpen]);
+
+  if (!recoveryModalOpen) return null;
+
+  const handleClose = () => {
     stopCamera();
-    onClose();
+    setErrorMsg(null);
+    closeRecoveryModal();
   };
 
   const startCamera = async () => {
     setCameraError(null);
     setCapturedSelfie(null);
-    setSelfieSource(null);
-    if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) {
+    if (
+      typeof navigator === "undefined" ||
+      !navigator.mediaDevices?.getUserMedia
+    ) {
       setCameraError(
-        "Browser camera API unavailable in this frame. Use the 1-tap Verified Sample Selfie below."
+        "Camera API unavailable here. Tap 'Instant Selfie Check' below.",
       );
       return;
     }
@@ -98,19 +78,11 @@ export default function SelfieLivenessModal({
       }
     } catch {
       setCameraError(
-        "Webcam permission denied or unavailable. Click 'Use Verified Sample Selfie' for instant demo verification."
+        "Camera permission was not granted. Use 'Instant Selfie Check' below.",
       );
       setCameraActive(false);
     }
   };
-
-  useEffect(() => {
-    return () => {
-      releaseMediaTracks();
-    };
-  }, [isOpen]);
-
-  if (!isOpen) return null;
 
   const captureFromWebcam = () => {
     if (!videoRef.current) return;
@@ -120,17 +92,15 @@ export default function SelfieLivenessModal({
     const ctx = canvas.getContext("2d");
     if (ctx) {
       ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.85);
+      const dataUrl = canvas.toDataURL("image/png");
       setCapturedSelfie(dataUrl);
-      setSelfieSource("WEBCAM");
       stopCamera();
     }
   };
 
   const applySampleSelfie = () => {
     stopCamera();
-    setCapturedSelfie(SAMPLE_VERIFIED_SELFIE_BASE64);
-    setSelfieSource("SAMPLE");
+    setCapturedSelfie(generateVerifiedSelfiePngDataUrl());
     setCameraError(null);
   };
 
@@ -139,30 +109,17 @@ export default function SelfieLivenessModal({
     setErrorMsg(null);
     const cleanNin = nin.replace(/\D/g, "");
     if (cleanNin.length !== 11) {
-      setErrorMsg("Please enter a valid 11-digit Nigerian NIN.");
+      setErrorMsg("Please enter your 11-digit NIN.");
       return;
     }
-    const finalSelfie = capturedSelfie || SAMPLE_VERIFIED_SELFIE_BASE64;
     setSubmitting(true);
     try {
-      if (mode === "ONBOARDING") {
-        await onCompleteOnboarding({
-          fullName,
-          phone,
-          email,
-          nin: cleanNin,
-          selfieImage: finalSelfie,
-        });
-      } else {
-        await onCompleteRecovery({
-          nin: cleanNin,
-          selfieImage: finalSelfie,
-        });
-      }
-      handleModalClose();
+      const selfie = capturedSelfie || generateVerifiedSelfiePngDataUrl();
+      await recoverIdentity(cleanNin, selfie);
+      handleClose();
     } catch (err) {
       setErrorMsg(
-        err instanceof Error ? err.message : "Verification failed. Please retry."
+        err instanceof Error ? err.message : "Identity verification failed.",
       );
     } finally {
       setSubmitting(false);
@@ -170,72 +127,39 @@ export default function SelfieLivenessModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-      <div className="w-full max-w-md rounded-3xl bg-[#0D1322] border border-slate-800 shadow-2xl overflow-hidden text-slate-100">
-        {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-slate-800/80">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white border border-[#E4E7DF] shadow-2xl overflow-hidden text-slate-900">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[#E4E7DF]">
           <div>
             <h2
-              className="text-base font-bold tracking-tight text-white"
+              className="text-base font-bold text-slate-900"
               style={{ fontFamily: "var(--font-jakarta)" }}
             >
-              {mode === "ONBOARDING"
-                ? "Zero-Paperwork KYC Onboarding"
-                : "3D Selfie Liveness Recovery"}
+              Verify Your Identity
             </h2>
-            <p className="text-xs text-slate-400 mt-0.5">
-              {mode === "ONBOARDING"
-                ? "Phone + 11-digit NIN + 3D Selfie · No utility bill required"
-                : `Clear 24h SIM-Swap Lock & trust device (${activeDeviceId})`}
+            <p className="text-xs text-slate-500 mt-0.5">
+              Confirm your NIN and selfie to trust this device and unfreeze your
+              US Dollar savings
             </p>
           </div>
           <button
             type="button"
-            onClick={handleModalClose}
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-white hover:bg-slate-800/60 transition-colors"
+            onClick={handleClose}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
             aria-label="Close modal"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-5 space-y-4 max-h-[82vh] overflow-y-auto">
-          {mode === "ONBOARDING" && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Full Legal Name
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={fullName}
-                  onChange={(e) => setFullName(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl bg-slate-900/90 border border-slate-800 text-sm text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
-                  Nigerian Phone Number
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  className="w-full h-11 px-3 rounded-xl bg-slate-900/90 border border-slate-800 text-sm font-mono tabular-nums text-white focus:outline-none focus:border-emerald-500"
-                />
-              </div>
-            </div>
-          )}
-
+        <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-medium text-slate-300">
-                11-Digit National Identification Number (NIN)
+            <div className="flex items-center justify-between mb-1.5">
+              <label className="text-xs font-semibold text-slate-700">
+                11-Digit NIN ({wallet?.profile.ninMasked ?? "•••••••8901"})
               </label>
-              <span className="text-[11px] font-mono tabular-nums text-emerald-400">
-                NIMC Verified
+              <span className="text-[11px] font-medium text-emerald-700">
+                NIMC Match
               </span>
             </div>
             <input
@@ -244,30 +168,26 @@ export default function SelfieLivenessModal({
               maxLength={11}
               value={nin}
               onChange={(e) => setNin(e.target.value.replace(/\D/g, ""))}
-              placeholder="29481039481"
-              className="w-full h-11 px-3 rounded-xl bg-slate-900/90 border border-slate-800 text-sm font-mono tabular-nums tracking-wider text-white focus:outline-none focus:border-emerald-500"
+              placeholder="12345678901"
+              className="w-full h-11 px-3.5 rounded-xl bg-[#F7F8F5] border border-[#E4E7DF] text-sm font-mono tracking-wider text-slate-900 focus:outline-none focus:border-[#0A3622] focus:bg-white"
             />
           </div>
 
-          {/* 3D Biometric Selfie Scanner */}
-          <div className="rounded-2xl bg-slate-950/90 border border-slate-800/90 p-4">
+          <div className="rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF] p-4">
             <div className="flex items-center justify-between mb-3">
-              <span className="text-xs font-medium text-slate-300">
-                3D Liveness Biometric Check
+              <span className="text-xs font-semibold text-slate-700">
+                Selfie Liveness Check
               </span>
-              <span className="text-[11px] text-slate-400 font-mono">
-                {selfieSource === "WEBCAM"
-                  ? "Live Camera Captured"
-                  : selfieSource === "SAMPLE"
-                  ? "Sample Liveness Loaded"
+              <span className="text-[11px] text-slate-500">
+                {capturedSelfie
+                  ? "Selfie captured"
                   : cameraActive
-                  ? "Camera Streaming..."
-                  : "Ready"}
+                    ? "Camera active"
+                    : "Ready"}
               </span>
             </div>
 
-            {/* Viewport */}
-            <div className="relative mx-auto w-48 h-48 rounded-2xl bg-slate-900 border border-slate-800 overflow-hidden flex items-center justify-center">
+            <div className="relative mx-auto w-44 h-44 rounded-2xl bg-white border border-[#E4E7DF] overflow-hidden flex items-center justify-center">
               {cameraActive ? (
                 <>
                   <video
@@ -277,106 +197,89 @@ export default function SelfieLivenessModal({
                     muted
                     className="w-full h-full object-cover scale-x-[-1]"
                   />
-                  {/* Oval 3D Face Framing Overlay */}
-                  <div className="pointer-events-none absolute inset-3 rounded-full border-2 border-dashed border-emerald-400/80 shadow-[0_0_25px_rgba(16,185,129,0.25)]" />
+                  <div className="pointer-events-none absolute inset-3 rounded-full border-2 border-dashed border-emerald-600" />
                 </>
               ) : capturedSelfie ? (
-                <div className="relative w-full h-full flex items-center justify-center bg-slate-900">
+                <div className="relative w-full h-full flex items-center justify-center">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={capturedSelfie}
-                    alt="Verified 3D Liveness Selfie"
-                    referrerPolicy="no-referrer"
+                    alt="Verified Selfie"
                     className="w-full h-full object-cover"
                   />
-                  <div className="absolute bottom-2 inset-x-2 px-2 py-1 rounded-lg bg-emerald-950/90 border border-emerald-500/40 flex items-center justify-center gap-1.5 text-[11px] font-medium text-emerald-300">
-                    <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>Liveness Match 99.8%</span>
+                  <div className="absolute bottom-2 inset-x-2 px-2 py-1 rounded-lg bg-emerald-900/90 text-white flex items-center justify-center gap-1 text-[11px] font-medium">
+                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-300" />
+                    <span>Liveness Confirmed</span>
                   </div>
                 </div>
               ) : (
                 <div className="text-center px-4 space-y-2">
-                  <div className="w-12 h-12 rounded-2xl bg-slate-800/80 border border-slate-700 mx-auto flex items-center justify-center text-slate-300">
-                    <Camera className="w-6 h-6" />
+                  <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-[#0A3622] mx-auto flex items-center justify-center">
+                    <Camera className="w-5 h-5" />
                   </div>
-                  <p className="text-xs text-slate-400 leading-relaxed">
-                    Start live webcam or use the 1-tap sample selfie for instant demo verification.
+                  <p className="text-xs text-slate-500">
+                    Position your face in the frame or use Instant Check
                   </p>
                 </div>
               )}
             </div>
 
             {cameraError && (
-              <div className="mt-3 p-2.5 rounded-xl bg-amber-950/50 border border-amber-500/30 flex items-start gap-2 text-xs text-amber-200">
-                <VideoOff className="w-4 h-4 text-amber-400 shrink-0 mt-0.5" />
+              <div className="mt-3 p-2.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2 text-xs text-amber-800">
+                <VideoOff className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <span>{cameraError}</span>
               </div>
             )}
 
-            {/* Camera / Fallback Controls */}
             <div className="grid grid-cols-2 gap-2.5 mt-3.5">
               {cameraActive ? (
                 <button
                   type="button"
                   onClick={captureFromWebcam}
-                  className="min-h-[44px] px-3 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-semibold text-xs flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                  className="h-10 px-3 rounded-xl bg-[#0A3622] text-white font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
                 >
-                  <Camera className="w-4 h-4 shrink-0" />
-                  <span>Capture Frame</span>
+                  <Camera className="w-3.5 h-3.5" />
+                  <span>Capture</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={startCamera}
-                  className="min-h-[44px] px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-100 font-medium text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition-colors whitespace-nowrap"
+                  className="h-10 px-3 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-medium text-xs flex items-center justify-center gap-1.5 border border-[#E4E7DF] cursor-pointer"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 shrink-0" />
-                  <span>{capturedSelfie ? "Retake Webcam" : "Start Webcam"}</span>
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>{capturedSelfie ? "Retake" : "Use Camera"}</span>
                 </button>
               )}
 
               <button
                 type="button"
                 onClick={applySampleSelfie}
-                className="min-h-[44px] px-3 py-2 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/30 font-medium text-xs flex items-center justify-center gap-1.5 transition-colors whitespace-nowrap"
+                className="h-10 px-3 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-[#0A3622] border border-emerald-200 font-semibold text-xs flex items-center justify-center gap-1.5 cursor-pointer"
               >
-                <Sparkles className="w-3.5 h-3.5 shrink-0" />
-                <span>1-Tap Sample Selfie</span>
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Instant Check</span>
               </button>
             </div>
           </div>
 
           {errorMsg && (
-            <div className="p-3 rounded-xl bg-rose-950/60 border border-rose-500/40 text-xs text-rose-200">
+            <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
               {errorMsg}
             </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
             disabled={submitting}
-            className="w-full min-h-[48px] px-4 py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 text-slate-950 font-semibold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
+            className="w-full h-12 rounded-xl bg-[#0A3622] hover:bg-[#14532D] disabled:opacity-50 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
           >
-            {mode === "ONBOARDING" ? (
-              <>
-                <UserCheck className="w-4 h-4" />
-                <span>
-                  {submitting
-                    ? "Verifying NIN & Liveness with Busha..."
-                    : "Verify Identity & Open Duro Wallet"}
-                </span>
-              </>
-            ) : (
-              <>
-                <ShieldCheck className="w-4 h-4" />
-                <span>
-                  {submitting
-                    ? "Verifying 3D Liveness..."
-                    : "Complete Liveness & Unlock Account"}
-                </span>
-              </>
-            )}
+            <ShieldCheck className="w-4 h-4" />
+            <span>
+              {submitting
+                ? "Verifying..."
+                : "Verify Identity & Unlock Savings"}
+            </span>
           </button>
         </form>
       </div>

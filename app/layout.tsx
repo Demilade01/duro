@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans, DM_Sans, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
+import { DuroProvider } from "@/components/duro-context";
+import AppShell from "@/components/shell/AppShell";
 
 const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
@@ -21,14 +23,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Duro — One Wallet, Two Balances",
+  title: "Duro — Spend Naira, Save US Dollars",
   description:
-    "Zero-paperwork everyday Naira spend (cNGN) and automated dollar shield (USDC) wallet powered by Busha APIs, with SIM-swap velocity guardrails and landlord financial passport.",
-  openGraph: {
-    title: "Duro — One Wallet, Two Balances",
-    description:
-      "Zero-paperwork everyday Naira spend (cNGN) and automated dollar shield (USDC) wallet powered by Busha APIs, with SIM-swap velocity guardrails and landlord financial passport.",
-  },
+    "One wallet, two balances. Everyday Naira spending and automatic US Dollar savings, built for Lagos earners.",
 };
 
 export default function RootLayout({
@@ -39,10 +36,12 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`dark ${jakarta.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#090D16] text-slate-100 selection:bg-emerald-500/30 selection:text-emerald-200">
-        {children}
+      <body className="min-h-full flex flex-col bg-[#F7F8F5] text-slate-900">
+        <DuroProvider>
+          <AppShell>{children}</AppShell>
+        </DuroProvider>
       </body>
     </html>
   );

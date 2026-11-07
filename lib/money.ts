@@ -35,3 +35,26 @@ export function usdToNgnMinor(usdMinor: number, rate = USD_NGN_RATE): number {
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+/** Busha official NGN fiat withdrawal / payout fee: NGN 100 base + 7.5% VAT = NGN 107.50 */
+export const BUSHA_NGN_PAYOUT_FEE = 107.5;
+
+export interface BushaPayoutFeeBreakdown {
+  principalNgn: number;
+  feeNgn: number;
+  baseFeeNgn: number;
+  vatNgn: number;
+  totalDebitNgn: number;
+}
+
+export function getBushaPayoutFeeBreakdown(amountNgn: number): BushaPayoutFeeBreakdown {
+  const principal = Math.max(0, Number(amountNgn) || 0);
+  const fee = principal > 0 ? BUSHA_NGN_PAYOUT_FEE : 0;
+  return {
+    principalNgn: principal,
+    feeNgn: fee,
+    baseFeeNgn: principal > 0 ? 100.0 : 0,
+    vatNgn: principal > 0 ? 7.5 : 0,
+    totalDebitNgn: round2(principal + fee),
+  };
+}

@@ -22,6 +22,7 @@ const Body = z
     recipientId: z.string().optional(),
     newRecipient: NewRecipient.optional(),
     amountNgn: z.number().min(100).max(5_000_000),
+    feeNgn: z.number().nonnegative().optional(),
     narration: z.string().max(100).optional(),
   })
   .refine((b) => !!b.recipientId !== !!b.newRecipient, {
@@ -102,10 +103,16 @@ export const POST = handler(async (req) => {
     bushaTransferId: transfer.id,
     bushaQuoteId: quote.id,
     recipientId: recipient.id,
-    meta: { narration: body.narration ?? null, timeline: transfer.timeline },
+    meta: {
+      narration: body.narration ?? null,
+      timeline: transfer.timeline,
+      fees: quote.fees,
+      feeNgn: body.feeNgn ?? 107.5,
+      totalDebitNgn: Number(transfer.source_amount) + (body.feeNgn ?? 0),
+    },
   });
 
-  return ok({ transfer, transaction, recipient: publicRecipient(recipient) }, 201);
+  return ok({ transfer, transaction, recipient: publicRecipient(recipient), quote }, 201);
 });
 
 /** Poll a payout's live timeline: GET /api/remit?transferId=TRF_... */

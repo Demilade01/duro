@@ -404,7 +404,14 @@ async function createQuote(profileId: string, body: unknown) {
       source_amount: fromMinor(sourceMinor),
       target_amount: fromMinor(targetMinor),
       rate: buildRate(src, tgt),
-      fees: [],
+      fees: isPayout
+        ? [
+            {
+              name: "Busha Payout Fee (7.5% VAT incl.)",
+              amount: { amount: "107.50", currency: "NGN" },
+            },
+          ]
+        : [],
       pay_in,
       pay_out,
       status: "pending",

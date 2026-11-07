@@ -118,7 +118,7 @@ interface DuroContextValue {
   ) => Promise<void>;
   sendRemittance: (
     input:
-      | { recipientId: string; amountNgn: number; narration?: string }
+      | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
       | {
           newRecipient: {
             label: string;
@@ -129,6 +129,7 @@ interface DuroContextValue {
           };
           amountNgn: number;
           narration?: string;
+          feeNgn?: number;
         },
   ) => Promise<RemitResponse>;
   pollRemittance: (transferId: string) => Promise<RemitPollResponse>;
@@ -329,7 +330,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
   const sendRemittance = useCallback(
     async (
       input:
-        | { recipientId: string; amountNgn: number; narration?: string }
+        | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
         | {
             newRecipient: {
               label: string;
@@ -340,6 +341,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
             };
             amountNgn: number;
             narration?: string;
+            feeNgn?: number;
           },
     ) => {
       const res = await client.remit(input);
@@ -401,12 +403,13 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     return res;
   }, [client, refreshWallet, showToast]);
 
+  const trustedDeviceId = wallet?.profile.trustedDeviceId;
   const switchToTrustedDevice = useCallback(async () => {
-    if (wallet?.profile.trustedDeviceId) {
-      client.setDeviceId(wallet.profile.trustedDeviceId);
+    if (trustedDeviceId) {
+      client.setDeviceId(trustedDeviceId);
       await refreshWallet();
     }
-  }, [client, refreshWallet, wallet?.profile.trustedDeviceId]);
+  }, [client, refreshWallet, trustedDeviceId]);
 
   const recoverIdentity = useCallback(
     async (nin: string, selfieImage: string) => {

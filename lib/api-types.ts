@@ -101,6 +101,7 @@ export interface RemitResponse {
   transfer: BushaTransfer;
   transaction: Transaction;
   recipient: PublicRecipient;
+  quote?: BushaQuote;
 }
 
 export interface RemitPollResponse {
@@ -242,7 +243,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
 
     remit: (
       body:
-        | { recipientId: string; amountNgn: number; narration?: string }
+        | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
         | {
             newRecipient: {
               label: string;
@@ -253,6 +254,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
             };
             amountNgn: number;
             narration?: string;
+            feeNgn?: number;
           },
     ) => request<RemitResponse>("POST", "/api/remit", body),
 

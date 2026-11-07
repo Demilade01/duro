@@ -1,3 +1,4 @@
+import { randomBytes, scryptSync, timingSafeEqual } from "node:crypto";
 import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { BushaClient, resolveMode } from "@/lib/busha/client";
@@ -11,14 +12,30 @@ import { handler, ok, parseBody } from "@/lib/http";
 import { DEFAULT_TRUSTED_DEVICE } from "@/lib/security/velocity-guard";
 import { publicProfile, publicRecipient } from "@/lib/services/wallet";
 
+function hashPassword(password: string): string {
+  const salt = randomBytes(16).toString("hex");
+  const derived = scryptSync(password, salt, 64).toString("hex");
+  return `${salt}:${derived}`;
+}
+
+function verifyPassword(password: string, storedHash: string): boolean {
+  const [salt, keyHex] = storedHash.split(":");
+  if (!salt || !keyHex) return false;
+  const keyBuf = Buffer.from(keyHex, "hex");
+  const derivedBuf = scryptSync(password, salt, 64);
+  if (keyBuf.length !== derivedBuf.length) return false;
+  return timingSafeEqual(keyBuf, derivedBuf);
+}
+
 const Body = z.object({
   phone: z.string().regex(/^\+?\d{10,15}$/, "Invalid phone number").default(TUNDE.phone),
   email: z.email().default(TUNDE.email),
+  password: z.string().min(6, "Password must be at least 6 characters").default(TUNDE.password),
   fullName: z.string().trim().min(3).refine((v) => v.includes(" "), "Enter first and last name").default(TUNDE.fullName),
   nin: z.string().regex(/^\d{11}$/, "NIN must be 11 digits").default(TUNDE.nin),
   selfieImage: z.string().startsWith("data:image/").default(SAMPLE_SELFIE_BASE64),
   documentImage: z.string().startsWith("data:image/").optional(),
-  /** Sign in to an existing account by email or phone without creating a new profile. */
+  /** Sign in to an existing account by email/phone + password. */
   loginOnly: z.boolean().default(false),
   /** Wipe the matching user's profile (and MOCK sandbox state) before re-creating. */
   reset: z.boolean().default(false),
@@ -46,18 +63,37 @@ export const POST = handler(async (req) => {
 
   if (body.loginOnly) {
     const [existing] = await findExisting();
-    if (!existing) {
+    if (existing) {
+      if (existing.passwordHash) {
+        if (!verifyPassword(body.password, existing.passwordHash)) {
+          throw new DuroError("VALIDATION", "Incorrect password. Please check your password and try again.", 401);
+        }
+      } else {
+        // Legacy profile created before password column existed: save password hash on login
+        await db
+          .update(userProfiles)
+          .set({ passwordHash: hashPassword(body.password) })
+          .where(eq(userProfiles.id, existing.id));
+      }
+      const recipients = await db.select().from(trustedRecipients).where(eq(trustedRecipients.userId, existing.id));
+      return withSessionCookie(
+        ok({ created: false, profile: publicProfile(existing), recipients: recipients.map(publicRecipient) }),
+        existing.id,
+      );
+    }
+
+    // If logging in with the built-in Demo credentials (Tunde) and Tunde hasn't been provisioned yet,
+    // fall through to auto-provision the demo account.
+    const isDemoLogin =
+      (body.email === TUNDE.email || body.phone === TUNDE.phone) &&
+      body.password === TUNDE.password;
+    if (!isDemoLogin) {
       throw new DuroError(
         "NOT_FOUND",
-        "No Duro account found with that email or phone number. Please open a new account.",
+        "No Duro account found with that email or phone number. Switch to 'Create Account' to sign up.",
         404,
       );
     }
-    const recipients = await db.select().from(trustedRecipients).where(eq(trustedRecipients.userId, existing.id));
-    return withSessionCookie(
-      ok({ created: false, profile: publicProfile(existing), recipients: recipients.map(publicRecipient) }),
-      existing.id,
-    );
   }
 
   if (body.reset) {
@@ -71,6 +107,9 @@ export const POST = handler(async (req) => {
   if (existing) {
     if (existing.phone !== body.phone) {
       throw new DuroError("VALIDATION", "Email is already registered to another phone number", 409);
+    }
+    if (existing.passwordHash && !body.reset && !verifyPassword(body.password, existing.passwordHash)) {
+      throw new DuroError("VALIDATION", "An account with this email/phone already exists. Please Sign In with your password.", 409);
     }
     const recipients = await db.select().from(trustedRecipients).where(eq(trustedRecipients.userId, existing.id));
     return withSessionCookie(
@@ -97,7 +136,7 @@ export const POST = handler(async (req) => {
     throw new DuroError("KYC_FAILED", "Identity verification was not approved", 403, verification);
   }
 
-  // 2) Persist profile
+  // 2) Persist profile with hashed password
   const [user] = await db
     .insert(userProfiles)
     .values({
@@ -105,6 +144,7 @@ export const POST = handler(async (req) => {
       email: body.email,
       fullName: body.fullName,
       nin: body.nin,
+      passwordHash: hashPassword(body.password),
       bushaProfileId: customer.id,
       kycStatus: "VERIFIED",
       trustedDeviceId: deviceId,
@@ -125,7 +165,7 @@ export const POST = handler(async (req) => {
   const existingRcp = await db
     .select()
     .from(trustedRecipients)
-    .where(and(eq(trustedRecipients.bushaRecipientId, rcp.id)));
+    .where(and(eq(trustedRecipients.userId, user.id), eq(trustedRecipients.bushaRecipientId, rcp.id)));
   const [mama] = existingRcp.length
     ? existingRcp
     : await db

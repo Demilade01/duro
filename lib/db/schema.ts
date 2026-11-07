@@ -32,7 +32,8 @@ export const userProfiles = pgTable("user_profiles", {
   email: text("email").notNull().unique(),
   fullName: text("full_name").notNull(),
   nin: text("nin").notNull(),
-  bushaProfileId: text("busha_profile_id").notNull().unique(),
+  passwordHash: text("password_hash"),
+  bushaProfileId: text("busha_profile_id").notNull(),
   kycStatus: text("kyc_status").notNull().default("VERIFIED"),
   autoSavePercent: integer("auto_save_percent").notNull().default(15),
   trustedDeviceId: text("trusted_device_id")
@@ -51,7 +52,7 @@ export const trustedRecipients = pgTable(
     userId: text("user_id")
       .notNull()
       .references(() => userProfiles.id, { onDelete: "cascade" }),
-    bushaRecipientId: text("busha_recipient_id").notNull().unique(),
+    bushaRecipientId: text("busha_recipient_id").notNull(),
     label: text("label").notNull(),
     bankName: text("bank_name").notNull(),
     bankCode: text("bank_code").notNull(),

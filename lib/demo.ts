@@ -9,6 +9,7 @@ export const TUNDE = {
   email: "tunde.bakare@duro.app",
   fullName: "Tunde Bakare",
   nin: "12345678901",
+  password: "Duro1234!",
 } as const;
 
 export const MAMA = {

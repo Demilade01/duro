@@ -251,6 +251,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
     onboard: async (body: {
       phone?: string;
       email?: string;
+      password?: string;
       fullName?: string;
       nin?: string;
       selfieImage?: string;

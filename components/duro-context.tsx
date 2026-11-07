@@ -100,11 +100,16 @@ interface DuroContextValue {
     fullName: string;
     phone: string;
     email: string;
+    password?: string;
     nin: string;
     selfieImage: string;
     reset?: boolean;
   }) => Promise<OnboardingResponse>;
-  signInAccount: (input: { email?: string; phone?: string }) => Promise<OnboardingResponse>;
+  signInAccount: (input: {
+    email?: string;
+    phone?: string;
+    password: string;
+  }) => Promise<OnboardingResponse>;
   startFreshOnboarding: () => void;
   resetDemoAccount: () => Promise<void>;
   createFundingAccount: (
@@ -267,6 +272,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
       fullName: string;
       phone: string;
       email: string;
+      password?: string;
       nin: string;
       selfieImage: string;
       reset?: boolean;
@@ -285,13 +291,14 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
   );
 
   const signInAccount = useCallback(
-    async (input: { email?: string; phone?: string }) => {
+    async (input: { email?: string; phone?: string; password: string }) => {
       if (typeof window !== "undefined") {
         window.localStorage.removeItem(LS_LOGGED_OUT);
       }
       const res = await client.onboard({
         email: input.email,
         phone: input.phone,
+        password: input.password,
         loginOnly: true,
       });
       await refreshWallet();
@@ -321,6 +328,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
       fullName: TUNDE.fullName,
       phone: TUNDE.phone,
       email: TUNDE.email,
+      password: TUNDE.password,
       nin: TUNDE.nin,
       selfieImage: generateVerifiedSelfiePngDataUrl(),
       reset: true,

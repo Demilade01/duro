@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/fund", label: "Add Money", icon: PlusCircle },
   { href: "/send", label: "Send Money", icon: Send },
-  { href: "/credit", label: "Rent & Statements", icon: FileText },
+  { href: "/credit", label: "Credit & Statements", icon: FileText },
   { href: "/settings", label: "Security & Devices", icon: Shield },
 ] as const;
 

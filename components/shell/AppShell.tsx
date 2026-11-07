@@ -255,8 +255,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Icon className="w-4 h-4 mb-0.5" />
               <span className="truncate max-w-[64px]">
-                {item.label === "Rent & Statements"
-                  ? "Rent"
+                {item.label === "Credit & Statements"
+                  ? "Credit"
                   : item.label === "Security & Devices"
                     ? "Security"
                     : item.label}

@@ -78,13 +78,29 @@ export const POST = handler(async (req) => {
   }
   if (!recipient) throw new DuroError("NOT_FOUND", "Recipient not found", 404);
 
+  // If the recipient was created in MOCK mode (`rcp_...`) and we are now running in LIVE mode,
+  // transparently register it on the live Busha Sandbox so `/v1/quotes` has a valid live recipient_id.
+  let liveRecipientId = recipient.bushaRecipientId;
+  if (ctx.mode === "LIVE" && liveRecipientId.startsWith("rcp_")) {
+    const rcp = await busha.createRecipient({
+      name: recipient.label,
+      details: {
+        bank_code: recipient.bankCode,
+        bank_name: recipient.bankName,
+        account_number: recipient.accountNumber,
+        account_name: recipient.accountName,
+      },
+    });
+    liveRecipientId = rcp.id;
+  }
+
   const reference = `DURO-REMIT-${Date.now()}`;
   const quote = await busha.createQuote({
     source_currency: "cNGN",
     target_currency: "NGN",
     source_amount: body.amountNgn.toFixed(2),
     pay_in: { type: "balance" },
-    pay_out: { type: "bank_transfer", recipient_id: recipient.bushaRecipientId },
+    pay_out: { type: "bank_transfer", recipient_id: liveRecipientId },
     reference,
   });
   const transfer = await busha.createTransfer({ quote_id: quote.id, reference });

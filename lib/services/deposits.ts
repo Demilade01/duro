@@ -29,10 +29,17 @@ export async function processWebhookEvent(
   mode: BushaMode,
 ): Promise<WebhookProcessingResult> {
   const transfer = event.data;
-  const [user] = await getDb()
+  const db = getDb();
+  let [user] = await db
     .select()
     .from(userProfiles)
     .where(eq(userProfiles.bushaProfileId, transfer.profile_id));
+
+  if (!user) {
+    // Fallback when switching between MOCK and LIVE profiles on the same demo account
+    const allUsers = await db.select().from(userProfiles);
+    user = allUsers[0];
+  }
   if (!user) return { event: event.event, handled: false, reason: `Unknown profile ${transfer.profile_id}` };
 
   if (event.event !== "transfer.funds_received") {

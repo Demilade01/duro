@@ -38,6 +38,8 @@ export const NIGERIAN_BANKS = [
   { code: "999991", name: "Moniepoint MFB" },
 ] as const;
 
+const LS_LOGGED_OUT = "duro.loggedOut";
+
 /**
  * Generates a valid PNG base64 data URL (> 100 chars) on an HTML5 canvas
  * so the backend's strict `data:image/(png|jpeg|webp);base64,...` liveness check
@@ -227,6 +229,17 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
+    // If the user explicitly logged out / is on the onboarding screen,
+    // keep them on the onboarding screen even if they refresh the page.
+    if (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem(LS_LOGGED_OUT) === "1"
+    ) {
+      setWallet(null);
+      setNeedsOnboarding(true);
+      setLoading(false);
+      return;
+    }
     (async () => {
       try {
         await refreshWallet();
@@ -255,6 +268,9 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
       selfieImage: string;
       reset?: boolean;
     }) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(LS_LOGGED_OUT);
+      }
       client.setDeviceId("DEV_TUNDE_IPHONE_01");
       const res = await client.onboard(input);
       await refreshWallet();
@@ -266,10 +282,18 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
   );
 
   const startFreshOnboarding = useCallback(() => {
+    if (typeof window !== "undefined") {
+      window.localStorage.setItem(LS_LOGGED_OUT, "1");
+    }
+    setWallet(null);
+    setActiveVirtualAccount(null);
     setNeedsOnboarding(true);
   }, []);
 
   const resetDemoAccount = useCallback(async () => {
+    if (typeof window !== "undefined") {
+      window.localStorage.removeItem(LS_LOGGED_OUT);
+    }
     client.setDeviceId("DEV_TUNDE_IPHONE_01");
     await client.onboard({
       fullName: TUNDE.fullName,

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import {
   FileText,
   Home,
+  LogOut,
   PlusCircle,
   Send,
   Shield,
@@ -32,6 +33,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     needsOnboarding,
     toast,
     openRecoveryModal,
+    startFreshOnboarding,
   } = useDuro();
 
   if (loading) {
@@ -219,7 +221,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </nav>
         </div>
 
-        {/* Bottom Profile Summary */}
+        {/* Bottom Profile Summary + Sign Out */}
         <div className="space-y-3">
           <div className="p-3.5 rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF]">
             <div className="flex items-center justify-between text-xs">
@@ -236,23 +238,34 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </p>
           </div>
 
-          <Link
-            href="/settings"
-            className="flex items-center gap-3 p-2.5 rounded-2xl hover:bg-[#F7F8F5] transition-colors"
-          >
-            <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0A3622] font-bold text-xs flex items-center justify-center shrink-0">
-              {initials}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold text-slate-900 truncate">
-                {wallet.profile.fullName}
+          <div className="flex items-center justify-between gap-2 p-2 rounded-2xl bg-[#F7F8F5]/70 border border-[#E4E7DF]">
+            <Link
+              href="/settings"
+              className="flex items-center gap-2.5 min-w-0 flex-1 p-1 rounded-xl hover:bg-white transition-colors"
+            >
+              <div className="w-9 h-9 rounded-full bg-emerald-100 text-[#0A3622] font-bold text-xs flex items-center justify-center shrink-0">
+                {initials}
               </div>
-              <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3" />
-                <span>NIMC Verified</span>
+              <div className="min-w-0 flex-1">
+                <div className="text-xs font-bold text-slate-900 truncate">
+                  {wallet.profile.fullName}
+                </div>
+                <div className="text-[11px] text-emerald-700 font-medium flex items-center gap-1">
+                  <ShieldCheck className="w-3 h-3" />
+                  <span>NIMC Verified</span>
+                </div>
               </div>
-            </div>
-          </Link>
+            </Link>
+
+            <button
+              type="button"
+              onClick={startFreshOnboarding}
+              title="Sign Out"
+              className="p-2 rounded-xl text-slate-500 hover:text-rose-700 hover:bg-rose-50 transition-colors cursor-pointer shrink-0"
+            >
+              <LogOut className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       </aside>
 
@@ -270,16 +283,26 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </span>
         </Link>
 
-        <Link
-          href="/settings"
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-[#F7F8F5] border border-[#E4E7DF] text-xs font-medium text-slate-800"
-        >
-          <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0A3622] font-bold text-[10px] flex items-center justify-center">
-            {initials}
-          </span>
-          <span>{wallet.profile.firstName}</span>
-          {isLocked && <span className="w-2 h-2 rounded-full bg-rose-500" />}
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/settings"
+            className="flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-[#F7F8F5] border border-[#E4E7DF] text-xs font-medium text-slate-800"
+          >
+            <span className="w-5 h-5 rounded-full bg-emerald-100 text-[#0A3622] font-bold text-[10px] flex items-center justify-center">
+              {initials}
+            </span>
+            <span>{wallet.profile.firstName}</span>
+            {isLocked && <span className="w-2 h-2 rounded-full bg-rose-500" />}
+          </Link>
+          <button
+            type="button"
+            onClick={startFreshOnboarding}
+            title="Sign Out"
+            className="p-2 rounded-full bg-[#F7F8F5] border border-[#E4E7DF] text-slate-600 hover:text-rose-700 cursor-pointer"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </button>
+        </div>
       </header>
 
       {/* Main Content Area */}

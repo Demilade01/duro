@@ -115,7 +115,7 @@ export default function CreditPage() {
           className="text-2xl font-bold text-slate-900"
           style={{ fontFamily: "var(--font-jakarta)" }}
         >
-          Rent & Income Statements
+          Credit & Income Statements
         </h1>
         <p className="text-sm text-slate-600">
           Prove your income to Lagos landlords or unlock a Naira rent advance

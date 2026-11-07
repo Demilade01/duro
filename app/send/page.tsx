@@ -142,7 +142,7 @@ export default function SendPage() {
       }
       if (isLocked) {
         setErrorMsg(
-          "24-Hour Security Lock Active: Payouts to new recipients are restricted. You can only send money to pre-verified family beneficiaries.",
+          "24-Hour Security Lock Active: For your protection against coercion and theft, sending to new recipients is strictly disabled. You can send normal amounts to your saved Trusted Accounts.",
         );
         return;
       }
@@ -316,7 +316,7 @@ export default function SendPage() {
                         {rec.isPreVerified && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-100 text-[#0A3622] text-[10px] font-semibold">
                             <ShieldCheck className="w-3 h-3" />
-                            <span>Trusted Family</span>
+                            <span>Trusted Account</span>
                           </span>
                         )}
                       </div>
@@ -325,6 +325,12 @@ export default function SendPage() {
                       </div>
                     </div>
                   </div>
+                  {isLocked && rec.isPreVerified && (
+                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-100 text-[#0A3622] text-[11px] font-semibold shrink-0">
+                      <ShieldCheck className="w-3 h-3" />
+                      <span>Normal Amount Allowed</span>
+                    </span>
+                  )}
                   {blocked && (
                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-100 text-amber-900 text-[11px] font-semibold shrink-0">
                       <Lock className="w-3 h-3" />
@@ -338,11 +344,12 @@ export default function SendPage() {
         ) : (
           <div className="p-4 rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF] space-y-3.5">
             {isLocked && (
-              <div className="p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900">
+              <div className="p-3.5 rounded-xl bg-amber-50 border border-amber-200 flex items-start gap-2.5 text-xs text-amber-900 leading-relaxed">
                 <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                 <div>
-                  <span className="font-bold">24-Hour Security Lock Active:</span>{" "}
-                  Transfers to new beneficiaries are blocked while on an unrecognized device. Pre-verified family accounts remain open.
+                  <span className="font-bold">24-Hour Anti-Theft Lock Active:</span>{" "}
+                  Adding or sending to new beneficiaries is strictly disabled to protect you against coercion and theft.
+                  You can send normal amounts to any of your saved <strong>Trusted Accounts</strong>.
                 </div>
               </div>
             )}
@@ -522,15 +529,17 @@ export default function SendPage() {
 
         <button
           type="submit"
-          disabled={!hasEnoughBalance || parsedAmount < 100 || quoting}
+          disabled={!hasEnoughBalance || parsedAmount < 100 || quoting || (addingNew && isLocked)}
           className="w-full h-12 rounded-xl bg-[#0A3622] hover:bg-[#14532D] disabled:opacity-50 text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer"
         >
           <span>
-            {quoting
-              ? "Fetching Live Busha Quote..."
-              : parsedAmount < 100
-                ? "Enter Transfer Amount"
-                : `Review Transfer & Fees (₦${totalDebitNgn.toLocaleString("en-NG", { minimumFractionDigits: 2 })})`}
+            {addingNew && isLocked
+              ? "New Recipients Frozen (24h Lock Active)"
+              : quoting
+                ? "Fetching Live Busha Quote..."
+                : parsedAmount < 100
+                  ? "Enter Transfer Amount"
+                  : `Review Transfer & Fees (₦${totalDebitNgn.toLocaleString("en-NG", { minimumFractionDigits: 2 })})`}
           </span>
           <ArrowRight className="w-4 h-4" />
         </button>

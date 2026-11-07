@@ -106,39 +106,85 @@ async function main() {
   check("auto-save % updated", pct.json.data?.profile?.autoSavePercent === 20, pct.json);
   await call("POST", "/api/split", { body: { action: "SET_PERCENT", percent: 15 } });
 
-  console.log("\n6. SIM-swap attack");
+  console.log("\n6. SIM-swap attack & Trusted Accounts Guard");
+  // 6a. Add a new trusted account while unlocked
+  const addPapa = await call("POST", "/api/recipients", {
+    body: {
+      label: "Papa Tunde",
+      bankName: "Access Bank",
+      bankCode: "044",
+      accountNumber: "0123456789",
+      accountName: "BABATUNDE ADIO",
+    },
+  });
+  check("add trusted recipient Papa while unlocked (200)", addPapa.status === 200 && addPapa.json.data.recipient.isPreVerified === true, addPapa.json);
+  const papaId: string = addPapa.json.data?.recipient?.id;
+
+  const rcpList = await call("GET", "/api/recipients");
+  check("trusted recipients list contains Mama and Papa", rcpList.json.data?.recipients?.length >= 2, rcpList.json.data);
+
+  // 6b. Engage 24h SIM-swap lock
   const atk = await call("POST", "/api/security/sim-swap", { body: { action: "SIMULATE_ATTACK" }, device: null });
   check("lock engaged for 24h", atk.json.data?.lock?.active === true && atk.json.data?.deviceId === HACKER, atk.json);
+
+  // 6c. Anti-coercion check: adding a new recipient while locked is strictly blocked
+  const addLocked = await call("POST", "/api/recipients", {
+    device: HACKER,
+    body: {
+      label: "Mule Account",
+      bankName: "Kuda Bank",
+      bankCode: "090267",
+      accountNumber: "9998887776",
+      accountName: "MULE FRAUDSTER",
+    },
+  });
+  check("adding recipient while locked is hard-blocked (423 anti-coercion)", addLocked.status === 423 && addLocked.json.error.code === "RECIPIENT_ADDITION_LOCKED", addLocked.json);
+
+  const delLocked = await call("DELETE", "/api/recipients", { device: HACKER, body: { id: papaId } });
+  check("modifying recipient while locked is hard-blocked (423)", delLocked.status === 423 && delLocked.json.error.code === "RECIPIENT_MUTATION_LOCKED", delLocked.json);
+
   const drain = await call("POST", "/api/split", { body: { action: "MOVE", direction: "SAVE_TO_SPEND", amount: 5 }, device: HACKER });
   check("USDC drain blocked (423)", drain.status === 423 && drain.json.error.code === "VELOCITY_LOCKED", drain.json);
+
   const thief = await call("POST", "/api/remit", { device: HACKER, body: { amountNgn: 100000, newRecipient: { label: "Fraudster", bankName: "Opay", bankCode: "999992", accountNumber: "8012345678", accountName: "JOHN DOE" } } });
   check("payout to new recipient blocked (423)", thief.status === 423 && thief.json.error.code === "UNVERIFIED_RECIPIENT_LOCKED", thief.json);
+
   const pledgeLocked = await call("POST", "/api/passport", { device: HACKER, body: { advanceNgn: 5000 } });
   check("pledge against Save blocked (423)", pledgeLocked.status === 423, pledgeLocked.json);
+
+  // 6d. Normal amounts to BOTH pre-verified trusted accounts (Mama and Papa) proceed seamlessly under lock
   const famOk = await call("POST", "/api/remit", { device: HACKER, body: { recipientId: mamaId, amountNgn: 5000 } });
   check("payout to pre-verified Mama still allowed", famOk.status === 201, famOk.json);
+
+  const papaQuote = await call("POST", "/api/remit", {
+    device: HACKER,
+    body: { recipientId: papaId, amountNgn: 25000, action: "QUOTE" },
+  });
+  check("quote of normal amount (₦25,000) to newly trusted Papa allowed under lock", papaQuote.status === 200 && papaQuote.json.data?.recipient?.id === papaId, papaQuote.json);
 
   console.log("\n7. Liveness recovery");
   const wrong = await call("POST", "/api/security/sim-swap", { device: HACKER, body: { action: "RECOVER_IDENTITY", nin: "00000000000", selfieImage: SELFIE } });
   check("wrong NIN rejected (403)", wrong.status === 403 && wrong.json.error.code === "KYC_FAILED", wrong.json);
   const rec = await call("POST", "/api/security/sim-swap", { device: HACKER, body: { action: "RECOVER_IDENTITY", nin: "12345678901", selfieImage: SELFIE } });
   check("lock cleared and new device trusted", rec.status === 200 && rec.json.data.lock.active === false && rec.json.data.lock.deviceTrusted === true, rec.json);
-  const after = await call("POST", "/api/split", { device: HACKER, body: { action: "MOVE", direction: "SAVE_TO_SPEND", amount: 1 } });
+  // Restore TRUSTED device so background browser tabs sharing the dev DB don't re-lock the session
+  await call("POST", "/api/security/sim-swap", { device: TRUSTED, body: { action: "RECOVER_IDENTITY", nin: "12345678901", selfieImage: SELFIE } });
+  const after = await call("POST", "/api/split", { device: TRUSTED, body: { action: "MOVE", direction: "SAVE_TO_SPEND", amount: 1 } });
   check("Save -> Spend works again", after.status === 200, after.json);
 
   console.log("\n8. Financial passport & rent advance");
-  const noConsent = await call("GET", "/api/passport", { device: HACKER });
+  const noConsent = await call("GET", "/api/passport", { device: TRUSTED });
   check("statement requires consent (403)", noConsent.status === 403 && noConsent.json.error.code === "CONSENT_REQUIRED", noConsent.json);
-  const stmt = await call("GET", "/api/passport?consent=true", { device: HACKER });
+  const stmt = await call("GET", "/api/passport?consent=true", { device: TRUSTED });
   check("statement has inflow history", stmt.status === 200 && stmt.json.data.statement.summary.totalInflow > 150000, stmt.json.data?.statement?.summary);
   check("credit offer eligible", stmt.json.data?.creditOffer?.eligible === true, stmt.json.data?.creditOffer);
-  const pledge = await call("POST", "/api/passport", { device: HACKER, body: { advanceNgn: 5000 } });
+  const pledge = await call("POST", "/api/passport", { device: TRUSTED, body: { advanceNgn: 5000 } });
   check("pledge authorized (PLG_)", pledge.status === 201 && pledge.json.data.pledge.status === "authorized" && pledge.json.data.pledge.id.startsWith("PLG_"), pledge.json);
   check("collateral $4.71 locked, not sold", near(pledge.json.data?.collateralUsdc, 4.71) && near(pledge.json.data?.balances?.save.locked, 4.71), pledge.json.data);
 
-  const final = await call("GET", "/api/wallet", { device: HACKER });
-  // 127,500 - 20,000 + 1,593 - 5,000 + 1,593 + 5,000
-  check("final Spend = ₦110,686", near(final.json.data?.balances?.spend.available, 110686), final.json.data?.balances?.spend);
+  const final = await call("GET", "/api/wallet", { device: TRUSTED });
+  // 127,500 - 20,000 - 215 (fee) + 1,593 - 5,000 - 215 (fee) + 1,593 + 5,000 = 110,256
+  check("final Spend = ₦110,256", near(final.json.data?.balances?.spend.available, 110256), final.json.data?.balances?.spend);
   check("final Save total = $12.12 (7.41 free + 4.71 pledged)", near(final.json.data?.balances?.save.total, 12.12), final.json.data?.balances?.save);
   check("telemetry logs present", (final.json.data?.logs?.length ?? 0) > 10);
 

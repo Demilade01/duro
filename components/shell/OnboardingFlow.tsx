@@ -5,6 +5,8 @@ import {
   ArrowRight,
   Camera,
   CheckCircle2,
+  Eye,
+  EyeOff,
   LogIn,
   RefreshCw,
   ShieldCheck,
@@ -21,20 +23,25 @@ import { TUNDE } from "@/lib/demo";
 export default function OnboardingFlow() {
   const { completeOnboarding, signInAccount } = useDuro();
 
-  const [mode, setMode] = useState<"ONBOARD" | "LOGIN">("ONBOARD");
+  const [mode, setMode] = useState<"ONBOARD" | "LOGIN">("LOGIN");
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [fullName, setFullName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [email, setEmail] = useState<string>("");
+  const [password, setPassword] = useState<string>("");
   const [nin, setNin] = useState<string>("");
   const [loginIdentifier, setLoginIdentifier] = useState<string>("");
+  const [loginPassword, setLoginPassword] = useState<string>("");
+  const [showPassword, setShowPassword] = useState<boolean>(false);
 
   const handleFillDemoDetails = () => {
     setFullName(TUNDE.fullName);
     setPhone(TUNDE.phone);
     setEmail(TUNDE.email);
+    setPassword(TUNDE.password);
     setNin(TUNDE.nin);
     setLoginIdentifier(TUNDE.email);
+    setLoginPassword(TUNDE.password);
     setErrorMsg(null);
   };
 
@@ -121,11 +128,17 @@ export default function OnboardingFlow() {
       setErrorMsg("Enter your registered email address or phone number.");
       return;
     }
+    if (!loginPassword) {
+      setErrorMsg("Enter your account password.");
+      return;
+    }
     setSubmitting(true);
     try {
       const isEmail = val.includes("@");
       await signInAccount(
-        isEmail ? { email: val } : { phone: val.replace(/\s+/g, "") },
+        isEmail
+          ? { email: val, password: loginPassword }
+          : { phone: val.replace(/\s+/g, ""), password: loginPassword },
       );
     } catch (err) {
       setErrorMsg(
@@ -151,6 +164,7 @@ export default function OnboardingFlow() {
         fullName: fullName.trim(),
         phone: phone.replace(/\s+/g, ""),
         email: email.trim(),
+        password,
         nin: cleanNin,
         selfieImage: selfie,
         reset: false,
@@ -187,22 +201,8 @@ export default function OnboardingFlow() {
       {/* Main Card */}
       <main className="my-auto py-8">
         <div className="max-w-md w-full mx-auto bg-white rounded-3xl border border-[#E4E7DF] shadow-sm p-6 sm:p-8">
-          {/* Mode Switcher: Open New Account vs. Sign In */}
+          {/* Mode Switcher: Sign In vs. Create Account */}
           <div className="grid grid-cols-2 p-1 rounded-xl bg-[#F7F8F5] border border-[#E4E7DF] mb-6">
-            <button
-              type="button"
-              onClick={() => {
-                setMode("ONBOARD");
-                setErrorMsg(null);
-              }}
-              className={`py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
-                mode === "ONBOARD"
-                  ? "bg-[#0A3622] text-white shadow-xs"
-                  : "text-slate-600 hover:text-slate-900"
-              }`}
-            >
-              Open Account
-            </button>
             <button
               type="button"
               onClick={() => {
@@ -217,6 +217,20 @@ export default function OnboardingFlow() {
             >
               Sign In
             </button>
+            <button
+              type="button"
+              onClick={() => {
+                setMode("ONBOARD");
+                setErrorMsg(null);
+              }}
+              className={`py-2 rounded-lg text-xs font-semibold transition-colors cursor-pointer ${
+                mode === "ONBOARD"
+                  ? "bg-[#0A3622] text-white shadow-xs"
+                  : "text-slate-600 hover:text-slate-900"
+              }`}
+            >
+              Create Account
+            </button>
           </div>
 
           {mode === "LOGIN" ? (
@@ -230,12 +244,13 @@ export default function OnboardingFlow() {
                     type="button"
                     onClick={() => {
                       setLoginIdentifier(TUNDE.email);
+                      setLoginPassword(TUNDE.password);
                       setErrorMsg(null);
                     }}
                     className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#0A3622] text-xs font-semibold transition-colors cursor-pointer"
                   >
                     <Sparkles className="w-3.5 h-3.5" />
-                    <span>Fill Demo Email</span>
+                    <span>Fill Demo Login</span>
                   </button>
                 </div>
                 <h1
@@ -245,7 +260,7 @@ export default function OnboardingFlow() {
                   Sign in to your wallet
                 </h1>
                 <p className="text-sm text-slate-600 mt-1">
-                  Enter the email address or phone number linked to your Duro account.
+                  Enter your email or phone number and password to access your Duro wallet.
                 </p>
               </div>
 
@@ -263,6 +278,34 @@ export default function OnboardingFlow() {
                 />
               </div>
 
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                  Password
+                </label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    value={loginPassword}
+                    onChange={(e) => setLoginPassword(e.target.value)}
+                    placeholder="Enter your password"
+                    className="w-full h-11 pl-3.5 pr-10 rounded-xl bg-[#F7F8F5] border border-[#E4E7DF] text-sm text-slate-900 focus:outline-none focus:border-[#0A3622] focus:bg-white"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword((prev) => !prev)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                    aria-label={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-4 h-4" />
+                    ) : (
+                      <Eye className="w-4 h-4" />
+                    )}
+                  </button>
+                </div>
+              </div>
+
               {errorMsg && (
                 <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
                   {errorMsg}
@@ -277,6 +320,20 @@ export default function OnboardingFlow() {
                 <LogIn className="w-4 h-4" />
                 <span>{submitting ? "Signing in..." : "Sign In to Wallet"}</span>
               </button>
+
+              <p className="text-center text-xs text-slate-500 pt-1">
+                Don&apos;t have an account yet?{" "}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMode("ONBOARD");
+                    setErrorMsg(null);
+                  }}
+                  className="font-semibold text-[#0A3622] hover:underline cursor-pointer"
+                >
+                  Create an Account
+                </button>
+              </p>
             </form>
           ) : (
             <>
@@ -296,6 +353,11 @@ export default function OnboardingFlow() {
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
+                    if (password.length < 6) {
+                      setErrorMsg("Password must be at least 6 characters.");
+                      return;
+                    }
+                    setErrorMsg(null);
                     setStep(2);
                   }}
                   className="space-y-4"
@@ -368,6 +430,41 @@ export default function OnboardingFlow() {
                     />
                   </div>
 
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                      Create password
+                    </label>
+                    <div className="relative">
+                      <input
+                        type={showPassword ? "text" : "password"}
+                        required
+                        minLength={6}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        placeholder="At least 6 characters"
+                        className="w-full h-11 pl-3.5 pr-10 rounded-xl bg-[#F7F8F5] border border-[#E4E7DF] text-sm text-slate-900 focus:outline-none focus:border-[#0A3622] focus:bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword((prev) => !prev)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
+                        aria-label={showPassword ? "Hide password" : "Show password"}
+                      >
+                        {showPassword ? (
+                          <EyeOff className="w-4 h-4" />
+                        ) : (
+                          <Eye className="w-4 h-4" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+
+                  {errorMsg && (
+                    <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
+                      {errorMsg}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
                     className="w-full h-12 rounded-xl bg-[#0A3622] hover:bg-[#14532D] text-white font-semibold text-sm flex items-center justify-center gap-2 transition-colors cursor-pointer mt-2"
@@ -375,6 +472,20 @@ export default function OnboardingFlow() {
                     <span>Continue</span>
                     <ArrowRight className="w-4 h-4" />
                   </button>
+
+                  <p className="text-center text-xs text-slate-500 pt-1">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMode("LOGIN");
+                        setErrorMsg(null);
+                      }}
+                      className="font-semibold text-[#0A3622] hover:underline cursor-pointer"
+                    >
+                      Sign In
+                    </button>
+                  </p>
                 </form>
               )}
 

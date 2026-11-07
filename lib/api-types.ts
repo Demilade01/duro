@@ -169,6 +169,20 @@ export interface SimSwapResponse {
   profile?: PublicProfile;
 }
 
+export interface RecipientsListResponse {
+  recipients: PublicRecipient[];
+}
+
+export interface RecipientMutationResponse {
+  recipient: PublicRecipient;
+  created: boolean;
+}
+
+export interface DeleteRecipientResponse {
+  deleted: boolean;
+  id: string;
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -220,7 +234,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
     }
   };
 
-  async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-device-id": deviceId,
@@ -248,9 +262,23 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
     setMode,
     setUserId,
 
+    getRecipients: () => request<RecipientsListResponse>("GET", "/api/recipients"),
+
+    addRecipient: (body: {
+      label: string;
+      bankName: string;
+      bankCode: string;
+      accountNumber: string;
+      accountName: string;
+    }) => request<RecipientMutationResponse>("POST", "/api/recipients", body),
+
+    deleteRecipient: (id: string) =>
+      request<DeleteRecipientResponse>("DELETE", "/api/recipients", { id }),
+
     onboard: async (body: {
       phone?: string;
       email?: string;
+      password?: string;
       fullName?: string;
       nin?: string;
       selfieImage?: string;
@@ -291,7 +319,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
 
     quoteRemit: (
       body:
-        | { recipientId: string; amountNgn: number; narration?: string }
+        | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
         | {
             newRecipient: {
               label: string;
@@ -302,6 +330,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
             };
             amountNgn: number;
             narration?: string;
+            feeNgn?: number;
           },
     ) => request<RemitQuoteResponse>("POST", "/api/remit", { ...body, action: "QUOTE" }),
 

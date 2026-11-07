@@ -2,8 +2,9 @@ import { and, eq, or } from "drizzle-orm";
 import { z } from "zod";
 import { BushaClient, resolveMode } from "@/lib/busha/client";
 import { deleteMockProfile, seedMockInsightsHistory } from "@/lib/busha/mock-store";
+import { SESSION_COOKIE } from "@/lib/context";
 import { getDb } from "@/lib/db";
-import { apiLogs, trustedRecipients, userProfiles } from "@/lib/db/schema";
+import { trustedRecipients, userProfiles } from "@/lib/db/schema";
 import { MAMA, SAMPLE_SELFIE_BASE64, TUNDE } from "@/lib/demo";
 import { DuroError } from "@/lib/errors";
 import { handler, ok, parseBody } from "@/lib/http";
@@ -17,11 +18,22 @@ const Body = z.object({
   nin: z.string().regex(/^\d{11}$/, "NIN must be 11 digits").default(TUNDE.nin),
   selfieImage: z.string().startsWith("data:image/").default(SAMPLE_SELFIE_BASE64),
   documentImage: z.string().startsWith("data:image/").optional(),
-  /** Wipe the existing profile (and MOCK sandbox state + telemetry) first. */
+  /** Sign in to an existing account by email or phone without creating a new profile. */
+  loginOnly: z.boolean().default(false),
+  /** Wipe the matching user's profile (and MOCK sandbox state) before re-creating. */
   reset: z.boolean().default(false),
   /** MOCK only: seed 3 months of insights history for the Financial Passport. */
   seedHistory: z.boolean().default(true),
 });
+
+function withSessionCookie<T>(response: ReturnType<typeof ok<T>>, userId: string) {
+  response.cookies.set(SESSION_COOKIE, userId, {
+    path: "/",
+    sameSite: "lax",
+    maxAge: 60 * 60 * 24 * 30, // 30 days
+  });
+  return response;
+}
 
 export const POST = handler(async (req) => {
   const body = await parseBody(req, Body);
@@ -32,12 +44,27 @@ export const POST = handler(async (req) => {
   const findExisting = () =>
     db.select().from(userProfiles).where(or(eq(userProfiles.phone, body.phone), eq(userProfiles.email, body.email)));
 
+  if (body.loginOnly) {
+    const [existing] = await findExisting();
+    if (!existing) {
+      throw new DuroError(
+        "NOT_FOUND",
+        "No Duro account found with that email or phone number. Please open a new account.",
+        404,
+      );
+    }
+    const recipients = await db.select().from(trustedRecipients).where(eq(trustedRecipients.userId, existing.id));
+    return withSessionCookie(
+      ok({ created: false, profile: publicProfile(existing), recipients: recipients.map(publicRecipient) }),
+      existing.id,
+    );
+  }
+
   if (body.reset) {
-    for (const u of await db.select().from(userProfiles)) {
+    for (const u of await findExisting()) {
       await db.delete(userProfiles).where(eq(userProfiles.id, u.id)); // cascades recipients + transactions
       if (mode === "MOCK") await deleteMockProfile(u.bushaProfileId);
     }
-    await db.delete(apiLogs);
   }
 
   const [existing] = await findExisting();
@@ -46,7 +73,10 @@ export const POST = handler(async (req) => {
       throw new DuroError("VALIDATION", "Email is already registered to another phone number", 409);
     }
     const recipients = await db.select().from(trustedRecipients).where(eq(trustedRecipients.userId, existing.id));
-    return ok({ created: false, profile: publicProfile(existing), recipients: recipients.map(publicRecipient) });
+    return withSessionCookie(
+      ok({ created: false, profile: publicProfile(existing), recipients: recipients.map(publicRecipient) }),
+      existing.id,
+    );
   }
 
   // 1) Busha individual customer + NIN/selfie KYC
@@ -106,15 +136,18 @@ export const POST = handler(async (req) => {
   let seededEntries = 0;
   if (mode === "MOCK" && body.seedHistory) seededEntries = await seedMockInsightsHistory(customer.id);
 
-  return ok(
-    {
-      created: true,
-      profile: publicProfile(user),
-      recipients: [publicRecipient(mama)],
-      bushaCustomer: customer,
-      verification,
-      seededInsightsEntries: seededEntries,
-    },
-    201,
+  return withSessionCookie(
+    ok(
+      {
+        created: true,
+        profile: publicProfile(user),
+        recipients: [publicRecipient(mama)],
+        bushaCustomer: customer,
+        verification,
+        seededInsightsEntries: seededEntries,
+      },
+      201,
+    ),
+    user.id,
   );
 });

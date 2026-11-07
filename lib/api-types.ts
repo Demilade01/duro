@@ -187,8 +187,9 @@ export class DuroClientError extends Error {
 
 const LS_DEVICE = "duro.deviceId";
 const LS_MODE = "duro.bushaMode";
+const LS_USER = "duro.userId";
 
-export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; baseUrl?: string }) {
+export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; userId?: string; baseUrl?: string }) {
   let deviceId =
     init?.deviceId ??
     (typeof window !== "undefined" ? window.localStorage.getItem(LS_DEVICE) : null) ??
@@ -197,6 +198,10 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
     init?.mode ??
     ((typeof window !== "undefined" ? window.localStorage.getItem(LS_MODE) : null) as BushaMode | null) ??
     ((process.env.NEXT_PUBLIC_BUSHA_API_MODE as BushaMode | undefined) ?? null);
+  let userId: string | null =
+    init?.userId ??
+    (typeof window !== "undefined" ? window.localStorage.getItem(LS_USER) : null) ??
+    null;
   const baseUrl = init?.baseUrl ?? "";
 
   const setDeviceId = (next: string) => {
@@ -207,6 +212,13 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
     mode = next;
     if (typeof window !== "undefined") window.localStorage.setItem(LS_MODE, next);
   };
+  const setUserId = (next: string | null) => {
+    userId = next;
+    if (typeof window !== "undefined") {
+      if (next) window.localStorage.setItem(LS_USER, next);
+      else window.localStorage.removeItem(LS_USER);
+    }
+  };
 
   async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
@@ -214,6 +226,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
       "x-device-id": deviceId,
     };
     if (mode) headers["x-busha-mode"] = mode;
+    if (userId) headers["x-duro-user-id"] = userId;
     const res = await fetch(`${baseUrl}${path}`, {
       method,
       headers,
@@ -230,17 +243,33 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
   return {
     get deviceId() { return deviceId; },
     get mode() { return mode; },
+    get userId() { return userId; },
     setDeviceId,
     setMode,
+    setUserId,
 
-    onboard: (body: {
+    onboard: async (body: {
       phone?: string;
       email?: string;
       fullName?: string;
       nin?: string;
       selfieImage?: string;
+      loginOnly?: boolean;
       reset?: boolean;
-    } = {}) => request<OnboardingResponse>("POST", "/api/onboarding", body),
+    } = {}) => {
+      const res = await request<OnboardingResponse>("POST", "/api/onboarding", body);
+      setUserId(res.profile.id);
+      return res;
+    },
+
+    logout: async () => {
+      setUserId(null);
+      try {
+        await request<{ loggedOut: boolean }>("POST", "/api/auth/logout", {});
+      } catch {
+        // Ignore logout network error
+      }
+    },
 
     getWallet: () => request<WalletSnapshot>("GET", "/api/wallet"),
 

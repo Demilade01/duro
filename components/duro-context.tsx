@@ -236,6 +236,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       if (err instanceof DuroClientError && err.code === "NOT_ONBOARDED") {
         client.setUserId(null);
+        void client.logout();
         setWallet(null);
         setNeedsOnboarding(true);
         return null;
@@ -247,11 +248,19 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let active = true;
     (async () => {
-      // If the user explicitly logged out / is on the onboarding screen,
-      // keep them on the onboarding screen even if they refresh the page.
+      const hasSessionCookie =
+        typeof document !== "undefined" &&
+        document.cookie.split(";").some((c) => c.trim().startsWith("duro_session="));
+      const hasStoredUser =
+        typeof window !== "undefined" &&
+        Boolean(window.localStorage.getItem("duro.userId"));
+
+      // If the user explicitly logged out, or has no active session yet,
+      // keep them on the Sign In / Onboarding screen without hitting /api/wallet.
       if (
         typeof window !== "undefined" &&
-        window.localStorage.getItem(LS_LOGGED_OUT) === "1"
+        (window.localStorage.getItem(LS_LOGGED_OUT) === "1" ||
+          (!hasSessionCookie && !hasStoredUser))
       ) {
         if (!active) return;
         setWallet(null);

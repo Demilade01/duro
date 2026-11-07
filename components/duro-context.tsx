@@ -17,6 +17,7 @@ import {
   type OnboardingResponse,
   type PassportStatementResponse,
   type PledgeAdvanceResponse,
+  type PublicRecipient,
   type RemitPollResponse,
   type RemitQuoteResponse,
   type RemitResponse,
@@ -161,6 +162,14 @@ interface DuroContextValue {
     advanceNgn: number,
     purpose?: "RENT" | "SCHOOL_FEES" | "EMERGENCY",
   ) => Promise<PledgeAdvanceResponse>;
+  addTrustedRecipient: (input: {
+    label: string;
+    bankName: string;
+    bankCode: string;
+    accountNumber: string;
+    accountName: string;
+  }) => Promise<PublicRecipient>;
+  deleteTrustedRecipient: (recipientId: string) => Promise<void>;
   switchToUnrecognizedDevice: () => Promise<SimSwapResponse>;
   switchToTrustedDevice: () => Promise<void>;
   recoverIdentity: (nin: string, selfieImage: string) => Promise<SimSwapResponse>;
@@ -229,18 +238,19 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    // If the user explicitly logged out / is on the onboarding screen,
-    // keep them on the onboarding screen even if they refresh the page.
-    if (
-      typeof window !== "undefined" &&
-      window.localStorage.getItem(LS_LOGGED_OUT) === "1"
-    ) {
-      setWallet(null);
-      setNeedsOnboarding(true);
-      setLoading(false);
-      return;
-    }
     (async () => {
+      // If the user explicitly logged out / is on the onboarding screen,
+      // keep them on the onboarding screen even if they refresh the page.
+      if (
+        typeof window !== "undefined" &&
+        window.localStorage.getItem(LS_LOGGED_OUT) === "1"
+      ) {
+        if (!active) return;
+        setWallet(null);
+        setNeedsOnboarding(true);
+        setLoading(false);
+        return;
+      }
       try {
         await refreshWallet();
       } catch (err) {
@@ -456,6 +466,34 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     [client, refreshWallet, showToast],
   );
 
+  const addTrustedRecipient = useCallback(
+    async (input: {
+      label: string;
+      bankName: string;
+      bankCode: string;
+      accountNumber: string;
+      accountName: string;
+    }) => {
+      const res = await client.addRecipient(input);
+      await refreshWallet();
+      showToast(
+        `Added ${res.recipient.label} to Trusted Accounts (exempt from 24h lock).`,
+        "success",
+      );
+      return res.recipient;
+    },
+    [client, refreshWallet, showToast],
+  );
+
+  const deleteTrustedRecipient = useCallback(
+    async (recipientId: string) => {
+      await client.deleteRecipient(recipientId);
+      await refreshWallet();
+      showToast("Trusted recipient removed.", "info");
+    },
+    [client, refreshWallet, showToast],
+  );
+
   const switchToUnrecognizedDevice = useCallback(async () => {
     const res = await client.simulateSimSwapAttack();
     await refreshWallet();
@@ -510,6 +548,8 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     pollRemittance,
     fetchStatement,
     requestRentAdvance,
+    addTrustedRecipient,
+    deleteTrustedRecipient,
     switchToUnrecognizedDevice,
     switchToTrustedDevice,
     recoverIdentity,

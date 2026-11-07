@@ -100,7 +100,7 @@ export async function enforceVelocityGuard(
   } else if (!action.recipient || !action.recipient.isPreVerified) {
     error = new DuroError(
       "UNVERIFIED_RECIPIENT_LOCKED",
-      "For your safety, you can only send to saved family recipients for the next 24 hours.",
+      "24-Hour Security Lock Active: For your protection against theft and coercion, you can only send to your pre-verified Trusted Accounts until the cooling-off period ends.",
       423,
       { lockedUntil: until, recipient: action.recipient?.label ?? "new recipient" },
     );

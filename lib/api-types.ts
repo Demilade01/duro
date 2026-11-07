@@ -169,6 +169,20 @@ export interface SimSwapResponse {
   profile?: PublicProfile;
 }
 
+export interface RecipientsListResponse {
+  recipients: PublicRecipient[];
+}
+
+export interface RecipientMutationResponse {
+  recipient: PublicRecipient;
+  created: boolean;
+}
+
+export interface DeleteRecipientResponse {
+  deleted: boolean;
+  id: string;
+}
+
 // ---------------------------------------------------------------------------
 // Client
 // ---------------------------------------------------------------------------
@@ -208,7 +222,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
     if (typeof window !== "undefined") window.localStorage.setItem(LS_MODE, next);
   };
 
-  async function request<T>(method: "GET" | "POST", path: string, body?: unknown): Promise<T> {
+  async function request<T>(method: "GET" | "POST" | "DELETE", path: string, body?: unknown): Promise<T> {
     const headers: Record<string, string> = {
       "Content-Type": "application/json",
       "x-device-id": deviceId,
@@ -232,6 +246,19 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
     get mode() { return mode; },
     setDeviceId,
     setMode,
+
+    getRecipients: () => request<RecipientsListResponse>("GET", "/api/recipients"),
+
+    addRecipient: (body: {
+      label: string;
+      bankName: string;
+      bankCode: string;
+      accountNumber: string;
+      accountName: string;
+    }) => request<RecipientMutationResponse>("POST", "/api/recipients", body),
+
+    deleteRecipient: (id: string) =>
+      request<DeleteRecipientResponse>("DELETE", "/api/recipients", { id }),
 
     onboard: (body: {
       phone?: string;

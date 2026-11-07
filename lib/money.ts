@@ -36,8 +36,20 @@ export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
 
-/** Busha official NGN fiat withdrawal / payout fee: NGN 100 base + 7.5% VAT = NGN 107.50 */
-export const BUSHA_NGN_PAYOUT_FEE = 107.5;
+/**
+ * Busha Sandbox NGN fiat payout fee schedule (returned by POST /v1/quotes):
+ *  - Base fee: NGN 200.00 ("Fees")
+ *  - VAT (7.5%): NGN 15.00 ("VAT on Fee (7.5%)")
+ *  - Total fee: NGN 215.00
+ */
+export const BUSHA_NGN_PAYOUT_BASE_FEE = 200.0;
+export const BUSHA_NGN_PAYOUT_VAT = 15.0;
+export const BUSHA_NGN_PAYOUT_FEE = 215.0;
+
+export interface BushaQuoteFeeItem {
+  name: string;
+  amount: { amount: string; currency: string };
+}
 
 export interface BushaPayoutFeeBreakdown {
   principalNgn: number;
@@ -47,14 +59,41 @@ export interface BushaPayoutFeeBreakdown {
   totalDebitNgn: number;
 }
 
-export function getBushaPayoutFeeBreakdown(amountNgn: number): BushaPayoutFeeBreakdown {
+export function getBushaPayoutFeeBreakdown(
+  amountNgn: number,
+  quoteFees?: BushaQuoteFeeItem[],
+): BushaPayoutFeeBreakdown {
   const principal = Math.max(0, Number(amountNgn) || 0);
-  const fee = principal > 0 ? BUSHA_NGN_PAYOUT_FEE : 0;
+  if (principal <= 0) {
+    return { principalNgn: 0, feeNgn: 0, baseFeeNgn: 0, vatNgn: 0, totalDebitNgn: 0 };
+  }
+
+  if (quoteFees && quoteFees.length > 0) {
+    let baseFee = 0;
+    let vatFee = 0;
+    for (const f of quoteFees) {
+      const val = Number(f.amount?.amount ?? 0) || 0;
+      if (/vat/i.test(f.name)) {
+        vatFee += val;
+      } else {
+        baseFee += val;
+      }
+    }
+    const totalFee = round2(baseFee + vatFee);
+    return {
+      principalNgn: principal,
+      feeNgn: totalFee,
+      baseFeeNgn: round2(baseFee),
+      vatNgn: round2(vatFee),
+      totalDebitNgn: round2(principal + totalFee),
+    };
+  }
+
   return {
     principalNgn: principal,
-    feeNgn: fee,
-    baseFeeNgn: principal > 0 ? 100.0 : 0,
-    vatNgn: principal > 0 ? 7.5 : 0,
-    totalDebitNgn: round2(principal + fee),
+    feeNgn: BUSHA_NGN_PAYOUT_FEE,
+    baseFeeNgn: BUSHA_NGN_PAYOUT_BASE_FEE,
+    vatNgn: BUSHA_NGN_PAYOUT_VAT,
+    totalDebitNgn: round2(principal + BUSHA_NGN_PAYOUT_FEE),
   };
 }

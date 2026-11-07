@@ -18,6 +18,7 @@ import {
   type PassportStatementResponse,
   type PledgeAdvanceResponse,
   type RemitPollResponse,
+  type RemitQuoteResponse,
   type RemitResponse,
   type SimSwapResponse,
   type SimulateSalaryResponse,
@@ -116,7 +117,7 @@ interface DuroContextValue {
     direction: ConversionDirection,
     amount: number,
   ) => Promise<void>;
-  sendRemittance: (
+  previewRemittance: (
     input:
       | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
       | {
@@ -130,6 +131,22 @@ interface DuroContextValue {
           amountNgn: number;
           narration?: string;
           feeNgn?: number;
+        },
+  ) => Promise<RemitQuoteResponse>;
+  sendRemittance: (
+    input:
+      | { recipientId: string; amountNgn: number; narration?: string; quoteId?: string }
+      | {
+          newRecipient: {
+            label: string;
+            bankName: string;
+            bankCode: string;
+            accountNumber: string;
+            accountName: string;
+          };
+          amountNgn: number;
+          narration?: string;
+          quoteId?: string;
         },
   ) => Promise<RemitResponse>;
   pollRemittance: (transferId: string) => Promise<RemitPollResponse>;
@@ -327,7 +344,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     [client, refreshWallet, showToast],
   );
 
-  const sendRemittance = useCallback(
+  const previewRemittance = useCallback(
     async (
       input:
         | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
@@ -342,6 +359,28 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
             amountNgn: number;
             narration?: string;
             feeNgn?: number;
+          },
+    ) => {
+      return client.quoteRemit(input);
+    },
+    [client],
+  );
+
+  const sendRemittance = useCallback(
+    async (
+      input:
+        | { recipientId: string; amountNgn: number; narration?: string; quoteId?: string }
+        | {
+            newRecipient: {
+              label: string;
+              bankName: string;
+              bankCode: string;
+              accountNumber: string;
+              accountName: string;
+            };
+            amountNgn: number;
+            narration?: string;
+            quoteId?: string;
           },
     ) => {
       const res = await client.remit(input);
@@ -442,6 +481,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     confirmDepositTransfer,
     updateAutoSavePercent,
     moveBetweenBalances,
+    previewRemittance,
     sendRemittance,
     pollRemittance,
     fetchStatement,

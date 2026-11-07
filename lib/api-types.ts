@@ -97,11 +97,30 @@ export type SplitResponse =
   | { profile: PublicProfile }
   | { transfer: BushaTransfer; transaction: Transaction; balances: WalletBalances };
 
+export interface RemitQuoteResponse {
+  quote: BushaQuote;
+  recipient: PublicRecipient;
+  feeBreakdown: {
+    principalNgn: number;
+    feeNgn: number;
+    baseFeeNgn: number;
+    vatNgn: number;
+    totalDebitNgn: number;
+  };
+}
+
 export interface RemitResponse {
   transfer: BushaTransfer;
   transaction: Transaction;
   recipient: PublicRecipient;
   quote?: BushaQuote;
+  feeBreakdown?: {
+    principalNgn: number;
+    feeNgn: number;
+    baseFeeNgn: number;
+    vatNgn: number;
+    totalDebitNgn: number;
+  };
 }
 
 export interface RemitPollResponse {
@@ -241,9 +260,9 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
         { action: "MOVE", direction, amount },
       ),
 
-    remit: (
+    quoteRemit: (
       body:
-        | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
+        | { recipientId: string; amountNgn: number; narration?: string }
         | {
             newRecipient: {
               label: string;
@@ -254,9 +273,25 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; b
             };
             amountNgn: number;
             narration?: string;
-            feeNgn?: number;
           },
-    ) => request<RemitResponse>("POST", "/api/remit", body),
+    ) => request<RemitQuoteResponse>("POST", "/api/remit", { ...body, action: "QUOTE" }),
+
+    remit: (
+      body:
+        | { recipientId: string; amountNgn: number; narration?: string; quoteId?: string }
+        | {
+            newRecipient: {
+              label: string;
+              bankName: string;
+              bankCode: string;
+              accountNumber: string;
+              accountName: string;
+            };
+            amountNgn: number;
+            narration?: string;
+            quoteId?: string;
+          },
+    ) => request<RemitResponse>("POST", "/api/remit", { ...body, action: "SEND" }),
 
     pollRemit: (transferId: string) =>
       request<RemitPollResponse>("GET", `/api/remit?transferId=${encodeURIComponent(transferId)}`),

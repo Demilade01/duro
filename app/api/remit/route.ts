@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { trustedRecipients, type TrustedRecipient } from "@/lib/db/schema";
 import { DuroError } from "@/lib/errors";
 import { handler, ok, parseBody } from "@/lib/http";
+import { getBushaPayoutFeeBreakdown } from "@/lib/money";
 import { enforceVelocityGuard } from "@/lib/security/velocity-guard";
 import { findTxByTransferId, recordTx, updateTxByTransferId } from "@/lib/services/ledger";
 import { publicRecipient } from "@/lib/services/wallet";
@@ -19,6 +20,8 @@ const NewRecipient = z.object({
 
 const Body = z
   .object({
+    action: z.enum(["QUOTE", "SEND"]).default("SEND"),
+    quoteId: z.string().optional(),
     recipientId: z.string().optional(),
     newRecipient: NewRecipient.optional(),
     amountNgn: z.number().min(100).max(5_000_000),
@@ -29,7 +32,7 @@ const Body = z
     message: "Provide exactly one of recipientId or newRecipient",
   });
 
-/** Send NGN home: cNGN -> NGN bank payout with a live 4-stage timeline. */
+/** Send NGN home: cNGN -> NGN bank payout with automatic Busha quote fee resolution & 4-stage timeline. */
 export const POST = handler(async (req) => {
   const ctx = await getContext(req);
   const body = await parseBody(req, Body);
@@ -79,16 +82,47 @@ export const POST = handler(async (req) => {
   }
   if (!recipient) throw new DuroError("NOT_FOUND", "Recipient not found", 404);
 
+  // If the recipient was created in MOCK mode (`rcp_...`) and we are now running in LIVE mode,
+  // transparently register it on the live Busha Sandbox so `/v1/quotes` has a valid live recipient_id.
+  let liveRecipientId = recipient.bushaRecipientId;
+  if (ctx.mode === "LIVE" && liveRecipientId.startsWith("rcp_")) {
+    const rcp = await busha.createRecipient({
+      name: recipient.label,
+      details: {
+        bank_code: recipient.bankCode,
+        bank_name: recipient.bankName,
+        account_number: recipient.accountNumber,
+        account_name: recipient.accountName,
+      },
+    });
+    liveRecipientId = rcp.id;
+  }
+
   const reference = `DURO-REMIT-${Date.now()}`;
+
+  // Step 1 ("QUOTE") or automatic quote creation before transfer:
+  // Pass `target_amount` so the recipient receives the full `amountNgn` and Busha
+  // automatically returns `fees` (₦200 + ₦15 VAT = ₦215) and `source_amount` (total debit).
   const quote = await busha.createQuote({
     source_currency: "cNGN",
     target_currency: "NGN",
-    source_amount: body.amountNgn.toFixed(2),
+    target_amount: body.amountNgn.toFixed(2),
     pay_in: { type: "balance" },
-    pay_out: { type: "bank_transfer", recipient_id: recipient.bushaRecipientId },
+    pay_out: { type: "bank_transfer", recipient_id: liveRecipientId },
     reference,
   });
-  const transfer = await busha.createTransfer({ quote_id: quote.id, reference });
+
+  const feeBreakdown = getBushaPayoutFeeBreakdown(body.amountNgn, quote.fees);
+
+  if (body.action === "QUOTE") {
+    return ok({
+      quote,
+      recipient: publicRecipient(recipient),
+      feeBreakdown,
+    });
+  }
+
+  const transfer = await busha.createTransfer({ quote_id: body.quoteId || quote.id, reference });
 
   const transaction = await recordTx({
     userId: user.id,
@@ -107,12 +141,12 @@ export const POST = handler(async (req) => {
       narration: body.narration ?? null,
       timeline: transfer.timeline,
       fees: quote.fees,
-      feeNgn: body.feeNgn ?? 107.5,
-      totalDebitNgn: Number(transfer.source_amount) + (body.feeNgn ?? 0),
+      feeNgn: feeBreakdown.feeNgn,
+      totalDebitNgn: Number(transfer.source_amount),
     },
   });
 
-  return ok({ transfer, transaction, recipient: publicRecipient(recipient), quote }, 201);
+  return ok({ transfer, transaction, recipient: publicRecipient(recipient), quote, feeBreakdown }, 201);
 });
 
 /** Poll a payout's live timeline: GET /api/remit?transferId=TRF_... */

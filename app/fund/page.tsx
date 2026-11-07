@@ -175,8 +175,8 @@ export default function FundPage() {
           <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <input
               type="number"
-              min={500}
-              step={500}
+              min={100}
+              step="any"
               value={amountNgn}
               onChange={(e) => setAmountNgn(Number(e.target.value) || 0)}
               className="flex-1 h-12 px-4 rounded-xl bg-[#F7F8F5] border border-[#E4E7DF] text-base font-mono tabular-nums text-slate-900 focus:outline-none focus:border-[#0A3622] focus:bg-white"

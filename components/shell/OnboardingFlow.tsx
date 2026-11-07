@@ -21,10 +21,18 @@ export default function OnboardingFlow() {
   const { completeOnboarding } = useDuro();
 
   const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [fullName, setFullName] = useState<string>(TUNDE.fullName);
-  const [phone, setPhone] = useState<string>(TUNDE.phone);
-  const [email, setEmail] = useState<string>(TUNDE.email);
-  const [nin, setNin] = useState<string>(TUNDE.nin);
+  const [fullName, setFullName] = useState<string>("");
+  const [phone, setPhone] = useState<string>("");
+  const [email, setEmail] = useState<string>("");
+  const [nin, setNin] = useState<string>("");
+
+  const handleFillDemoDetails = () => {
+    setFullName(TUNDE.fullName);
+    setPhone(TUNDE.phone);
+    setEmail(TUNDE.email);
+    setNin(TUNDE.nin);
+    setErrorMsg(null);
+  };
 
   const [cameraActive, setCameraActive] = useState(false);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -173,9 +181,19 @@ export default function OnboardingFlow() {
               className="space-y-4"
             >
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#0A3622]">
-                  Step 1 of 3
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#0A3622]">
+                    Step 1 of 3
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleFillDemoDetails}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#0A3622] text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Fill Demo Details</span>
+                  </button>
+                </div>
                 <h1
                   className="text-2xl font-bold text-slate-900 mt-1"
                   style={{ fontFamily: "var(--font-jakarta)" }}
@@ -254,9 +272,22 @@ export default function OnboardingFlow() {
               className="space-y-4"
             >
               <div>
-                <span className="text-xs font-semibold uppercase tracking-wider text-[#0A3622]">
-                  Step 2 of 3
-                </span>
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-[#0A3622]">
+                    Step 2 of 3
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setNin(TUNDE.nin);
+                      setErrorMsg(null);
+                    }}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-[#0A3622] text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Sparkles className="w-3.5 h-3.5" />
+                    <span>Fill Demo NIN</span>
+                  </button>
+                </div>
                 <h1
                   className="text-2xl font-bold text-slate-900 mt-1"
                   style={{ fontFamily: "var(--font-jakarta)" }}

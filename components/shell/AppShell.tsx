@@ -32,7 +32,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     loading,
     needsOnboarding,
     toast,
-    openRecoveryModal,
     startFreshOnboarding,
   } = useDuro();
 
@@ -317,22 +316,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
                 <div>
                   <div className="text-xs font-bold text-rose-900">
-                    24-Hour Security Protection Active (New Device Detected)
+                    24-Hour Anti-Coercion Lock Active (New Device Detected)
                   </div>
                   <p className="text-xs text-rose-700 mt-0.5">
-                    To protect your money after a SIM swap or lost phone, US
-                    Dollar withdrawals are frozen and bank transfers can only go
-                    to saved family recipients.
+                    To protect you against SIM swap, phone theft, and physical coercion, US
+                    Dollar withdrawals and new recipients are strictly frozen for 24 hours.
+                    You can still transfer normal amounts to your pre-saved Trusted Accounts.
                   </p>
                 </div>
               </div>
-              <button
-                type="button"
-                onClick={openRecoveryModal}
-                className="h-9 px-4 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs whitespace-nowrap shrink-0 cursor-pointer"
+              <Link
+                href="/send"
+                className="h-9 px-4 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs whitespace-nowrap shrink-0 flex items-center justify-center cursor-pointer"
               >
-                Verify Selfie to Unlock
-              </button>
+                Send to Trusted Account
+              </Link>
             </div>
           </div>
         )}

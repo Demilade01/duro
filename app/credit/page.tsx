@@ -22,7 +22,6 @@ export default function CreditPage() {
     wallet,
     fetchStatement,
     requestRentAdvance,
-    openRecoveryModal,
   } = useDuro();
 
   const [passport, setPassport] = useState<PassportStatementResponse | null>(
@@ -366,17 +365,8 @@ export default function CreditPage() {
         </div>
 
         {advanceError && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-2.5">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
             <p>{advanceError}</p>
-            {isLocked && (
-              <button
-                type="button"
-                onClick={openRecoveryModal}
-                className="h-9 px-3.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs cursor-pointer"
-              >
-                Verify Selfie to Unlock Dollar Collateral
-              </button>
-            )}
           </div>
         )}
 

@@ -23,7 +23,6 @@ export default function HomePage() {
     wallet,
     updateAutoSavePercent,
     moveBetweenBalances,
-    openRecoveryModal,
   } = useDuro();
 
   const [splitDraft, setSplitDraft] = useState<number | null>(null);
@@ -285,17 +284,8 @@ export default function HomePage() {
           </div>
 
           {moveError && (
-            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div className="p-3.5 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
               <span>{moveError}</span>
-              {isLocked && (
-                <button
-                  type="button"
-                  onClick={openRecoveryModal}
-                  className="px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs self-start cursor-pointer"
-                >
-                  Verify Selfie to Unlock
-                </button>
-              )}
             </div>
           )}
         </form>

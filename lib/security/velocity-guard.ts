@@ -93,7 +93,7 @@ export async function enforceVelocityGuard(
   if (action.type === "SAVE_WITHDRAW") {
     error = new DuroError(
       "VELOCITY_LOCKED",
-      "Your Save balance is frozen for 24 hours because we noticed a new device. Verify your identity to unlock.",
+      "Your Save balance is frozen for 24 hours because we noticed a new device. For your protection against coercion, only transfers from Naira Spend to pre-verified Trusted Accounts are allowed during the cooling-off period.",
       423,
       { lockedUntil: until, action: action.description },
     );

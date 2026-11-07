@@ -165,6 +165,17 @@ export default function CreditPage() {
           </div>
         </div>
 
+        {loadingPassport && !passport && (
+          <div className="space-y-4 animate-pulse">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="h-20 rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF]" />
+              <div className="h-20 rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF]" />
+              <div className="h-20 rounded-2xl bg-emerald-50/70 border border-emerald-200" />
+            </div>
+            <div className="h-40 rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF]" />
+          </div>
+        )}
+
         {passport && (
           <>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">

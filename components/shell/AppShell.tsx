@@ -36,19 +36,118 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#F7F8F5] flex items-center justify-center p-6">
-        <div className="w-full max-w-md space-y-4">
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#0A3622] text-white flex items-center justify-center font-bold">
-              D
+      <div className="min-h-screen bg-[#F7F8F5] text-slate-900 flex flex-col lg:flex-row">
+        {/* Desktop Left Sidebar Skeleton */}
+        <aside className="hidden lg:flex lg:w-64 lg:flex-col lg:fixed lg:inset-y-0 bg-white border-r border-[#E4E7DF] px-5 py-6 justify-between">
+          <div className="space-y-7">
+            <div className="flex items-center gap-2.5 px-2">
+              <div className="w-9 h-9 rounded-xl bg-[#0A3622] text-white flex items-center justify-center font-bold text-base">
+                D
+              </div>
+              <div>
+                <span
+                  className="text-xl font-bold tracking-tight text-slate-900 block leading-none"
+                  style={{ fontFamily: "var(--font-jakarta)" }}
+                >
+                  Duro
+                </span>
+                <span className="text-[11px] text-slate-500">
+                  Spend Naira · Save Dollars
+                </span>
+              </div>
             </div>
-            <div className="h-5 w-28 bg-slate-200 rounded-md animate-pulse" />
+
+            <nav className="space-y-1.5">
+              {NAV_ITEMS.map((item) => {
+                const Icon = item.icon;
+                const active =
+                  item.href === "/"
+                    ? pathname === "/"
+                    : pathname.startsWith(item.href);
+                return (
+                  <div
+                    key={item.href}
+                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium ${
+                      active
+                        ? "bg-[#0A3622] text-white font-semibold"
+                        : "text-slate-500"
+                    }`}
+                  >
+                    <Icon className="w-4 h-4 shrink-0" />
+                    <span>{item.label}</span>
+                  </div>
+                );
+              })}
+            </nav>
           </div>
-          <div className="h-40 w-full rounded-3xl bg-white border border-[#E4E7DF] p-6 animate-pulse" />
-          <div className="grid grid-cols-2 gap-4">
-            <div className="h-32 rounded-3xl bg-white border border-[#E4E7DF] animate-pulse" />
-            <div className="h-32 rounded-3xl bg-white border border-[#E4E7DF] animate-pulse" />
+
+          <div className="p-3.5 rounded-2xl bg-[#F7F8F5] border border-[#E4E7DF] space-y-2 animate-pulse">
+            <div className="h-3.5 w-28 bg-slate-200 rounded" />
+            <div className="h-2.5 w-36 bg-slate-200/80 rounded" />
           </div>
+        </aside>
+
+        {/* Main Workspace Skeleton */}
+        <div className="flex-1 lg:pl-64 flex flex-col min-h-screen">
+          <header className="sticky top-0 z-30 bg-[#F7F8F5]/90 backdrop-blur-md border-b border-[#E4E7DF] px-4 sm:px-8 h-16 flex items-center justify-between">
+            <div className="flex items-center gap-2.5 lg:hidden">
+              <div className="w-8 h-8 rounded-xl bg-[#0A3622] text-white flex items-center justify-center font-bold text-sm">
+                D
+              </div>
+              <span
+                className="text-lg font-bold tracking-tight text-slate-900"
+                style={{ fontFamily: "var(--font-jakarta)" }}
+              >
+                Duro
+              </span>
+            </div>
+            <div className="hidden lg:block h-4 w-44 bg-slate-200 rounded animate-pulse" />
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-32 rounded-full bg-white border border-[#E4E7DF] animate-pulse" />
+              <div className="h-9 w-28 rounded-full bg-white border border-[#E4E7DF] animate-pulse" />
+            </div>
+          </header>
+
+          <main className="flex-1 w-full max-w-4xl mx-auto px-4 sm:px-8 py-6 sm:py-8 space-y-6">
+            {/* Hero Portfolio Banner Skeleton */}
+            <div className="h-48 w-full rounded-3xl bg-[#0A3622]/90 p-7 flex flex-col justify-between animate-pulse">
+              <div className="space-y-3">
+                <div className="h-3.5 w-40 bg-emerald-200/30 rounded" />
+                <div className="h-10 w-64 bg-white/20 rounded-xl" />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-32 bg-white/20 rounded-xl" />
+                <div className="h-10 w-32 bg-white/10 rounded-xl" />
+              </div>
+            </div>
+
+            {/* Two-Column Spend & Save Cards Skeleton */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="h-44 rounded-3xl bg-white border border-[#E4E7DF] p-6 flex flex-col justify-between animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div className="h-8 w-36 bg-slate-200 rounded-lg" />
+                  <div className="h-6 w-14 bg-emerald-100 rounded-full" />
+                </div>
+                <div className="h-8 w-44 bg-slate-200 rounded-lg" />
+                <div className="h-3.5 w-52 bg-slate-100 rounded" />
+              </div>
+              <div className="h-44 rounded-3xl bg-white border border-[#E4E7DF] p-6 flex flex-col justify-between animate-pulse">
+                <div className="flex items-center justify-between">
+                  <div className="h-8 w-36 bg-slate-200 rounded-lg" />
+                  <div className="h-6 w-14 bg-amber-100 rounded-full" />
+                </div>
+                <div className="h-8 w-44 bg-slate-200 rounded-lg" />
+                <div className="h-3.5 w-52 bg-slate-100 rounded" />
+              </div>
+            </div>
+
+            {/* Bottom Section Skeleton */}
+            <div className="h-56 rounded-3xl bg-white border border-[#E4E7DF] p-6 space-y-4 animate-pulse">
+              <div className="h-5 w-48 bg-slate-200 rounded" />
+              <div className="h-12 w-full bg-slate-100 rounded-2xl" />
+              <div className="h-12 w-full bg-slate-100 rounded-2xl" />
+            </div>
+          </main>
         </div>
       </div>
     );

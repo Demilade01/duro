@@ -33,7 +33,7 @@ export const POST = handler(async (req) => {
     db.select().from(userProfiles).where(or(eq(userProfiles.phone, body.phone), eq(userProfiles.email, body.email)));
 
   if (body.reset) {
-    for (const u of await findExisting()) {
+    for (const u of await db.select().from(userProfiles)) {
       await db.delete(userProfiles).where(eq(userProfiles.id, u.id)); // cascades recipients + transactions
       if (mode === "MOCK") await deleteMockProfile(u.bushaProfileId);
     }

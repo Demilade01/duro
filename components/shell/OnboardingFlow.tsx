@@ -63,6 +63,13 @@ export default function OnboardingFlow() {
   };
 
   useEffect(() => {
+    if (cameraActive && videoRef.current && streamRef.current) {
+      videoRef.current.srcObject = streamRef.current;
+      void videoRef.current.play().catch(() => {});
+    }
+  }, [cameraActive]);
+
+  useEffect(() => {
     return () => {
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
@@ -89,9 +96,6 @@ export default function OnboardingFlow() {
       });
       streamRef.current = stream;
       setCameraActive(true);
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-      }
     } catch {
       setCameraError(
         "Camera permission was declined. You can complete verification with the instant check below.",
@@ -100,15 +104,22 @@ export default function OnboardingFlow() {
     }
   };
 
-  const captureFromWebcam = () => {
-    if (!videoRef.current) return;
+  const snapVideoFrame = (): string | null => {
+    if (!videoRef.current) return null;
     const canvas = document.createElement("canvas");
     canvas.width = 280;
     canvas.height = 280;
     const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/png");
+    if (!ctx) return null;
+    ctx.translate(canvas.width, 0);
+    ctx.scale(-1, 1);
+    ctx.drawImage(videoRef.current, 0, 0, canvas.width, canvas.height);
+    return canvas.toDataURL("image/png");
+  };
+
+  const captureFromWebcam = () => {
+    const dataUrl = snapVideoFrame();
+    if (dataUrl) {
       setCapturedSelfie(dataUrl);
       stopCamera();
     }
@@ -159,14 +170,19 @@ export default function OnboardingFlow() {
     }
     setSubmitting(true);
     try {
-      const selfie = capturedSelfie || generateVerifiedSelfiePngDataUrl();
+      let selfie = capturedSelfie;
+      if (!selfie && cameraActive) {
+        selfie = snapVideoFrame();
+        stopCamera();
+      }
+      const finalSelfie = selfie || generateVerifiedSelfiePngDataUrl();
       await completeOnboarding({
         fullName: fullName.trim(),
         phone: phone.replace(/\s+/g, ""),
         email: email.trim(),
         password,
         nin: cleanNin,
-        selfieImage: selfie,
+        selfieImage: finalSelfie,
         reset: false,
       });
     } catch (err) {
@@ -600,7 +616,13 @@ export default function OnboardingFlow() {
                       {cameraActive ? (
                         <>
                           <video
-                            ref={videoRef}
+                            ref={(el) => {
+                              videoRef.current = el;
+                              if (el && streamRef.current && el.srcObject !== streamRef.current) {
+                                el.srcObject = streamRef.current;
+                                void el.play().catch(() => {});
+                              }
+                            }}
                             autoPlay
                             playsInline
                             muted

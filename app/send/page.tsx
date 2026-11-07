@@ -256,6 +256,7 @@ export default function SendPage() {
       </div>
 
       <form
+        noValidate
         onSubmit={handleOpenReviewModal}
         className="rounded-3xl bg-white border border-[#E4E7DF] p-6 space-y-5"
       >
@@ -419,7 +420,7 @@ export default function SendPage() {
             <input
               type="number"
               min={100}
-              step={500}
+              step="any"
               value={amountNgn}
               onChange={(e) => {
                 setAmountNgn(e.target.value);

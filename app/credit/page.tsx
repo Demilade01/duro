@@ -53,8 +53,25 @@ export default function CreditPage() {
   }, [fetchStatement]);
 
   useEffect(() => {
-    loadStatement();
-  }, [loadStatement]);
+    let ignore = false;
+    fetchStatement({ interval: "monthly" })
+      .then((data) => {
+        if (!ignore) {
+          setPassport(data);
+          if (data.creditOffer.maxAdvanceNgn >= 1000) {
+            setAdvanceNgn(Math.min(10000, data.creditOffer.maxAdvanceNgn));
+          }
+        }
+      })
+      .finally(() => {
+        if (!ignore) {
+          setLoadingPassport(false);
+        }
+      });
+    return () => {
+      ignore = true;
+    };
+  }, [fetchStatement]);
 
   if (!wallet) return null;
 

@@ -386,7 +386,17 @@ async function createQuote(profileId: string, body: unknown) {
 
   const srcMinor = p.source_amount != null ? parseAmount(p.source_amount, "source_amount") : null;
   const tgtMinor = p.target_amount != null ? parseAmount(p.target_amount, "target_amount") : null;
-  const [sourceMinor, targetMinor] = priceQuote(src, tgt, srcMinor, tgtMinor);
+  let [sourceMinor, targetMinor] = priceQuote(src, tgt, srcMinor, tgtMinor);
+  const payoutFeeMinor = isPayout ? 215_00 : 0;
+  if (isPayout) {
+    if (tgtMinor != null) {
+      targetMinor = tgtMinor;
+      sourceMinor = tgtMinor + payoutFeeMinor;
+    } else if (srcMinor != null) {
+      sourceMinor = srcMinor;
+      targetMinor = Math.max(0, srcMinor - payoutFeeMinor);
+    }
+  }
   if (targetMinor < 1) throw invalid("Amount too small to convert");
   if (isDeposit && sourceMinor < 100_00) throw invalid("Minimum deposit is NGN 100");
 
@@ -404,7 +414,12 @@ async function createQuote(profileId: string, body: unknown) {
       source_amount: fromMinor(sourceMinor),
       target_amount: fromMinor(targetMinor),
       rate: buildRate(src, tgt),
-      fees: [],
+      fees: isPayout
+        ? [
+            { name: "Fees", amount: { amount: "200", currency: "NGN" } },
+            { name: "VAT on Fee (7.5%)", amount: { amount: "15", currency: "NGN" } },
+          ]
+        : [],
       pay_in,
       pay_out,
       status: "pending",

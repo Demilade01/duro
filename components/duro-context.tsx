@@ -18,6 +18,7 @@ import {
   type PassportStatementResponse,
   type PledgeAdvanceResponse,
   type RemitPollResponse,
+  type RemitQuoteResponse,
   type RemitResponse,
   type SimSwapResponse,
   type SimulateSalaryResponse,
@@ -116,7 +117,7 @@ interface DuroContextValue {
     direction: ConversionDirection,
     amount: number,
   ) => Promise<void>;
-  sendRemittance: (
+  previewRemittance: (
     input:
       | { recipientId: string; amountNgn: number; narration?: string }
       | {
@@ -129,6 +130,22 @@ interface DuroContextValue {
           };
           amountNgn: number;
           narration?: string;
+        },
+  ) => Promise<RemitQuoteResponse>;
+  sendRemittance: (
+    input:
+      | { recipientId: string; amountNgn: number; narration?: string; quoteId?: string }
+      | {
+          newRecipient: {
+            label: string;
+            bankName: string;
+            bankCode: string;
+            accountNumber: string;
+            accountName: string;
+          };
+          amountNgn: number;
+          narration?: string;
+          quoteId?: string;
         },
   ) => Promise<RemitResponse>;
   pollRemittance: (transferId: string) => Promise<RemitPollResponse>;
@@ -326,7 +343,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     [client, refreshWallet, showToast],
   );
 
-  const sendRemittance = useCallback(
+  const previewRemittance = useCallback(
     async (
       input:
         | { recipientId: string; amountNgn: number; narration?: string }
@@ -340,6 +357,28 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
             };
             amountNgn: number;
             narration?: string;
+          },
+    ) => {
+      return client.quoteRemit(input);
+    },
+    [client],
+  );
+
+  const sendRemittance = useCallback(
+    async (
+      input:
+        | { recipientId: string; amountNgn: number; narration?: string; quoteId?: string }
+        | {
+            newRecipient: {
+              label: string;
+              bankName: string;
+              bankCode: string;
+              accountNumber: string;
+              accountName: string;
+            };
+            amountNgn: number;
+            narration?: string;
+            quoteId?: string;
           },
     ) => {
       const res = await client.remit(input);
@@ -401,12 +440,13 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     return res;
   }, [client, refreshWallet, showToast]);
 
+  const trustedDeviceId = wallet?.profile.trustedDeviceId;
   const switchToTrustedDevice = useCallback(async () => {
-    if (wallet?.profile.trustedDeviceId) {
-      client.setDeviceId(wallet.profile.trustedDeviceId);
+    if (trustedDeviceId) {
+      client.setDeviceId(trustedDeviceId);
       await refreshWallet();
     }
-  }, [client, refreshWallet, wallet?.profile.trustedDeviceId]);
+  }, [client, refreshWallet, trustedDeviceId]);
 
   const recoverIdentity = useCallback(
     async (nin: string, selfieImage: string) => {
@@ -439,6 +479,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     confirmDepositTransfer,
     updateAutoSavePercent,
     moveBetweenBalances,
+    previewRemittance,
     sendRemittance,
     pollRemittance,
     fetchStatement,

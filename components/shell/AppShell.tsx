@@ -20,7 +20,7 @@ const NAV_ITEMS = [
   { href: "/", label: "Home", icon: Home },
   { href: "/fund", label: "Add Money", icon: PlusCircle },
   { href: "/send", label: "Send Money", icon: Send },
-  { href: "/credit", label: "Rent & Statements", icon: FileText },
+  { href: "/credit", label: "Credit & Statements", icon: FileText },
   { href: "/settings", label: "Security & Devices", icon: Shield },
 ] as const;
 
@@ -255,8 +255,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             >
               <Icon className="w-4 h-4 mb-0.5" />
               <span className="truncate max-w-[64px]">
-                {item.label === "Rent & Statements"
-                  ? "Rent"
+                {item.label === "Credit & Statements"
+                  ? "Credit"
                   : item.label === "Security & Devices"
                     ? "Security"
                     : item.label}

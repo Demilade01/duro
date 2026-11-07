@@ -1,18 +1,23 @@
-import { config } from "dotenv";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { sql } from "drizzle-orm";
 import { getDb } from "../lib/db";
 
-config({ path: ".env.local" });
-config();
+if (existsSync(".env.local") && typeof process.loadEnvFile === "function") {
+  process.loadEnvFile(".env.local");
+}
 
 async function main() {
   const db = getDb();
   const raw = readFileSync("./drizzle/0000_dapper_mandroid.sql", "utf8");
-  const statements = raw
-    .split("--> statement-breakpoint")
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const statements = [
+    ...raw
+      .split("--> statement-breakpoint")
+      .map((s) => s.trim())
+      .filter(Boolean),
+    `ALTER TABLE "user_profiles" ADD COLUMN IF NOT EXISTS "password_hash" text;`,
+    `ALTER TABLE "user_profiles" DROP CONSTRAINT IF EXISTS "user_profiles_busha_profile_id_unique";`,
+    `ALTER TABLE "trusted_recipients" DROP CONSTRAINT IF EXISTS "trusted_recipients_busha_recipient_id_unique";`,
+  ];
 
   for (const stmt of statements) {
     try {

@@ -101,9 +101,15 @@ interface DuroContextValue {
     fullName: string;
     phone: string;
     email: string;
+    password?: string;
     nin: string;
     selfieImage: string;
     reset?: boolean;
+  }) => Promise<OnboardingResponse>;
+  signInAccount: (input: {
+    email?: string;
+    phone?: string;
+    password: string;
   }) => Promise<OnboardingResponse>;
   startFreshOnboarding: () => void;
   resetDemoAccount: () => Promise<void>;
@@ -222,12 +228,14 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
   const refreshWallet = useCallback(async (): Promise<WalletSnapshot | null> => {
     try {
       const snap = await client.getWallet();
+      client.setUserId(snap.profile.id);
       setWallet(snap);
       setNeedsOnboarding(false);
       hydratePendingVirtualAccount(snap);
       return snap;
     } catch (err) {
       if (err instanceof DuroClientError && err.code === "NOT_ONBOARDED") {
+        client.setUserId(null);
         setWallet(null);
         setNeedsOnboarding(true);
         return null;
@@ -274,6 +282,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
       fullName: string;
       phone: string;
       email: string;
+      password?: string;
       nin: string;
       selfieImage: string;
       reset?: boolean;
@@ -291,14 +300,34 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     [client, refreshWallet, showToast],
   );
 
+  const signInAccount = useCallback(
+    async (input: { email?: string; phone?: string; password: string }) => {
+      if (typeof window !== "undefined") {
+        window.localStorage.removeItem(LS_LOGGED_OUT);
+      }
+      const res = await client.onboard({
+        email: input.email,
+        phone: input.phone,
+        password: input.password,
+        loginOnly: true,
+      });
+      await refreshWallet();
+      setNeedsOnboarding(false);
+      showToast(`Welcome back, ${res.profile.firstName}!`, "success");
+      return res;
+    },
+    [client, refreshWallet, showToast],
+  );
+
   const startFreshOnboarding = useCallback(() => {
     if (typeof window !== "undefined") {
       window.localStorage.setItem(LS_LOGGED_OUT, "1");
     }
+    void client.logout();
     setWallet(null);
     setActiveVirtualAccount(null);
     setNeedsOnboarding(true);
-  }, []);
+  }, [client]);
 
   const resetDemoAccount = useCallback(async () => {
     if (typeof window !== "undefined") {
@@ -309,6 +338,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
       fullName: TUNDE.fullName,
       phone: TUNDE.phone,
       email: TUNDE.email,
+      password: TUNDE.password,
       nin: TUNDE.nin,
       selfieImage: generateVerifiedSelfiePngDataUrl(),
       reset: true,
@@ -537,6 +567,7 @@ export function DuroProvider({ children }: { children: React.ReactNode }) {
     showToast,
     refreshWallet,
     completeOnboarding,
+    signInAccount,
     startFreshOnboarding,
     resetDemoAccount,
     createFundingAccount,

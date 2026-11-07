@@ -13,7 +13,6 @@ import {
   Send,
   ShieldAlert,
   ShieldCheck,
-  UserPlus,
   X,
 } from "lucide-react";
 import { NIGERIAN_BANKS, useDuro } from "@/components/duro-context";
@@ -26,7 +25,6 @@ export default function SendPage() {
     previewRemittance,
     sendRemittance,
     pollRemittance,
-    openRecoveryModal,
   } = useDuro();
 
   const recipients = useMemo(() => wallet?.recipients ?? [], [wallet?.recipients]);
@@ -509,21 +507,11 @@ export default function SendPage() {
         )}
 
         {errorMsg && (
-          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800 space-y-2.5">
+          <div className="p-4 rounded-2xl bg-rose-50 border border-rose-200 text-xs text-rose-800">
             <div className="flex items-start gap-2.5">
               <ShieldAlert className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
               <div className="leading-relaxed font-medium">{errorMsg}</div>
             </div>
-            {isLocked && (
-              <button
-                type="button"
-                onClick={openRecoveryModal}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-700 hover:bg-rose-800 text-white font-semibold text-xs transition-colors cursor-pointer"
-              >
-                <UserPlus className="w-3.5 h-3.5" />
-                <span>Verify NIN & Selfie to Unlock New Recipients</span>
-              </button>
-            )}
           </div>
         )}
 

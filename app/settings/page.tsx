@@ -24,7 +24,6 @@ export default function SettingsPage() {
   const {
     wallet,
     switchToUnrecognizedDevice,
-    openRecoveryModal,
     startFreshOnboarding,
     resetDemoAccount,
     addTrustedRecipient,
@@ -313,8 +312,9 @@ export default function SettingsPage() {
             </h2>
             <p className="text-xs text-slate-500 mt-0.5">
               If someone signs in with your SIM on a new phone, Duro freezes
-              your US Dollar savings for 24 hours and blocks transfers to
-              unknown bank accounts until you verify with a live selfie.
+              your US Dollar savings and new beneficiaries for a strict 24-hour
+              cooling-off period (cannot be bypassed under coercion). Transfers
+              remain open to your pre-saved Trusted Accounts.
             </p>
           </div>
         </div>
@@ -396,13 +396,10 @@ export default function SettingsPage() {
             </div>
 
             {isLocked ? (
-              <button
-                type="button"
-                onClick={openRecoveryModal}
-                className="h-10 px-4 rounded-xl bg-[#0A3622] hover:bg-[#14532D] text-white text-xs font-semibold whitespace-nowrap cursor-pointer"
-              >
-                Verify Selfie to Trust Device
-              </button>
+              <div className="h-10 px-4 rounded-xl bg-rose-100 border border-rose-200 text-rose-800 text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap">
+                <Lock className="w-3.5 h-3.5 text-rose-700" />
+                <span>24h Cooling-Off Active (Trusted Accounts Only)</span>
+              </div>
             ) : (
               <button
                 type="button"

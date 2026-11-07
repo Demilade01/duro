@@ -5,7 +5,7 @@ import { handler, ok, parseBody } from "@/lib/http";
 import { USD_NGN_RATE, round2 } from "@/lib/money";
 import { enforceVelocityGuard } from "@/lib/security/velocity-guard";
 import { recordTx } from "@/lib/services/ledger";
-import { publicProfile, summarizeBalances } from "@/lib/services/wallet";
+import { getUserBalances, publicProfile } from "@/lib/services/wallet";
 
 /** Collateral must cover 150% of the advance (LTV ≈ 66.7%). */
 const COLLATERAL_RATIO = 1.5;
@@ -46,11 +46,10 @@ export const GET = handler(async (req) => {
   }
   const q = parsed.data;
 
-  const [trends, rawBalances] = await Promise.all([
+  const [trends, balances] = await Promise.all([
     ctx.busha.getTransactionTrends({ currency: "NGN", from: q.from, to: q.to, interval: q.interval }),
-    ctx.busha.getBalances(),
+    getUserBalances(ctx),
   ]);
-  const balances = summarizeBalances(rawBalances);
   const rangeDays = Math.max(1, (Date.parse(trends.to) - Date.parse(trends.from)) / 86_400_000);
   const generatedAt = new Date().toISOString();
 
@@ -97,7 +96,7 @@ export const POST = handler(async (req) => {
     ctx,
   );
 
-  const before = summarizeBalances(await ctx.busha.getBalances());
+  const before = await getUserBalances(ctx);
   const collateralUsdc = Math.ceil(((body.advanceNgn * COLLATERAL_RATIO) / USD_NGN_RATE) * 100) / 100;
   if (collateralUsdc > before.save.available) {
     throw new DuroError(
@@ -123,6 +122,6 @@ export const POST = handler(async (req) => {
     meta: { pledgeId: pledge.id, pledgeQuoteId: quote.id, ltv: pledge.ltv, purpose: body.purpose },
   });
 
-  const balances = summarizeBalances(await ctx.busha.getBalances());
+  const balances = await getUserBalances(ctx);
   return ok({ pledge, collateralUsdc, advanceNgn: body.advanceNgn, ltv: Number(pledge.ltv), transaction, balances }, 201);
 });

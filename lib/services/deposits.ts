@@ -1,8 +1,8 @@
-import { eq } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { BushaClient } from "@/lib/busha/client";
 import type { BushaMode, BushaTransfer, BushaWebhookEvent } from "@/lib/busha/types";
 import { getDb } from "@/lib/db";
-import { userProfiles } from "@/lib/db/schema";
+import { transactions, userProfiles } from "@/lib/db/schema";
 import { round2 } from "@/lib/money";
 import { convertBetweenBalances } from "./conversions";
 import { findTxByTransferId, recordTx, updateTxByTransferId } from "./ledger";
@@ -30,13 +30,28 @@ export async function processWebhookEvent(
 ): Promise<WebhookProcessingResult> {
   const transfer = event.data;
   const db = getDb();
-  let [user] = await db
+
+  // First resolve the exact user who initiated this deposit transfer via `transactions.bushaTransferId`
+  // (essential in LIVE mode where multiple Duro users share one Busha Sandbox profile_id).
+  const [matchingTx] = await db
     .select()
-    .from(userProfiles)
-    .where(eq(userProfiles.bushaProfileId, transfer.profile_id));
+    .from(transactions)
+    .where(eq(transactions.bushaTransferId, transfer.id))
+    .orderBy(desc(transactions.createdAt))
+    .limit(1);
+
+  let user = matchingTx
+    ? (await db.select().from(userProfiles).where(eq(userProfiles.id, matchingTx.userId)))[0]
+    : undefined;
 
   if (!user) {
-    // Fallback when switching between MOCK and LIVE profiles on the same demo account
+    [user] = await db
+      .select()
+      .from(userProfiles)
+      .where(eq(userProfiles.bushaProfileId, transfer.profile_id));
+  }
+
+  if (!user) {
     const allUsers = await db.select().from(userProfiles);
     user = allUsers[0];
   }

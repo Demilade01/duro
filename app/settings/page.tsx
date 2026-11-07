@@ -259,10 +259,10 @@ export default function SettingsPage() {
           <button
             type="button"
             onClick={startFreshOnboarding}
-            className="h-10 px-4 rounded-xl bg-white hover:bg-slate-50 border border-[#E4E7DF] text-slate-800 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+            className="h-10 px-4 rounded-xl bg-white hover:bg-rose-50 border border-[#E4E7DF] hover:border-rose-200 text-slate-800 hover:text-rose-700 text-xs font-semibold flex items-center gap-1.5 transition-colors cursor-pointer"
           >
             <LogOut className="w-3.5 h-3.5" />
-            <span>View Onboarding Flow</span>
+            <span>Sign Out</span>
           </button>
         </div>
       </div>

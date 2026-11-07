@@ -1,6 +1,6 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "@/lib/db";
-import { trustedRecipients, type TrustedRecipient, type UserProfile } from "@/lib/db/schema";
+import { transactions, trustedRecipients, type TrustedRecipient, type UserProfile } from "@/lib/db/schema";
 import type { BushaBalance } from "@/lib/busha/types";
 import type { RequestContext } from "@/lib/context";
 import { USD_NGN_RATE, round2 } from "@/lib/money";
@@ -62,16 +62,100 @@ export function summarizeBalances(raw: BushaBalance[]) {
   };
 }
 
+export async function getUserBalances(ctx: Pick<RequestContext, "user" | "busha" | "mode">) {
+  const raw = await ctx.busha.getBalances();
+  if (ctx.mode === "MOCK") {
+    return summarizeBalances(raw);
+  }
+
+  // In LIVE mode, a single Busha Sandbox API key shares one global float across all users.
+  // We still call `busha.getBalances()` above for live API verification & telemetry,
+  // and compute each Duro user's personal sub-wallet balances from their own ledger rows
+  // so every new account starts cleanly at ₦0.00 Spend / $0.00 Save.
+  const userTxs = await getDb()
+    .select()
+    .from(transactions)
+    .where(eq(transactions.userId, ctx.user.id));
+
+  let cngnAvailable = 0;
+  let cngnPending = 0;
+  let usdcAvailable = 0;
+  let usdcLocked = 0;
+
+  for (const tx of userTxs) {
+    const amt = Number(tx.amount) || 0;
+    const counter = Number(tx.counterAmount) || 0;
+
+    if (tx.kind === "DEPOSIT") {
+      if (tx.status === "funds_received" || tx.status === "completed") {
+        cngnAvailable += amt;
+      } else if (tx.status === "pending") {
+        cngnPending += amt;
+      }
+    } else if (tx.kind === "AUTO_SAVE" || tx.kind === "CONVERSION") {
+      if (tx.currency === "USDC") {
+        // SPEND_TO_SAVE: cNGN -> USDC
+        cngnAvailable -= counter;
+        usdcAvailable += amt;
+      } else if (tx.currency === "cNGN") {
+        // SAVE_TO_SPEND: USDC -> cNGN
+        usdcAvailable -= counter;
+        cngnAvailable += amt;
+      }
+    } else if (tx.kind === "PAYOUT") {
+      if (tx.status !== "failed" && tx.status !== "cancelled") {
+        cngnAvailable -= amt;
+      }
+    } else if (tx.kind === "PLEDGE_ADVANCE") {
+      if (tx.status !== "failed" && tx.status !== "cancelled") {
+        cngnAvailable += amt;
+        usdcAvailable -= counter;
+        usdcLocked += counter;
+      }
+    }
+  }
+
+  cngnAvailable = Math.max(0, round2(cngnAvailable));
+  cngnPending = Math.max(0, round2(cngnPending));
+  const cngnTotal = round2(cngnAvailable + cngnPending);
+
+  usdcAvailable = Math.max(0, round2(usdcAvailable));
+  usdcLocked = Math.max(0, round2(usdcLocked));
+  const usdcTotal = round2(usdcAvailable + usdcLocked);
+
+  const scopedRaw: BushaBalance[] = [
+    {
+      currency: "cNGN",
+      name: "cNGN (Naira Stablecoin)",
+      is_fiat: false,
+      available_balance: cngnAvailable.toFixed(2),
+      pending_balance: cngnPending.toFixed(2),
+      total_balance: cngnTotal.toFixed(2),
+    },
+    {
+      currency: "USDC",
+      name: "USD Coin",
+      is_fiat: false,
+      available_balance: usdcAvailable.toFixed(2),
+      pending_balance: usdcLocked.toFixed(2),
+      total_balance: usdcTotal.toFixed(2),
+    },
+    ...raw.filter((b) => b.currency !== "cNGN" && b.currency !== "USDC"),
+  ];
+
+  return summarizeBalances(scopedRaw);
+}
+
 export async function getUserRecipients(userId: string) {
   return getDb().select().from(trustedRecipients).where(eq(trustedRecipients.userId, userId));
 }
 
 export async function buildWalletSnapshot(ctx: RequestContext) {
-  const { user, busha } = ctx;
+  const { user } = ctx;
   let balances: ReturnType<typeof summarizeBalances> | null = null;
   let balancesError: string | null = null;
   try {
-    balances = summarizeBalances(await busha.getBalances());
+    balances = await getUserBalances(ctx);
   } catch (err) {
     balancesError = err instanceof Error ? err.message : String(err);
   }

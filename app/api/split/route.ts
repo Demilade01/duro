@@ -6,7 +6,7 @@ import { userProfiles } from "@/lib/db/schema";
 import { handler, ok, parseBody } from "@/lib/http";
 import { enforceVelocityGuard } from "@/lib/security/velocity-guard";
 import { convertBetweenBalances } from "@/lib/services/conversions";
-import { publicProfile, summarizeBalances } from "@/lib/services/wallet";
+import { getUserBalances, publicProfile } from "@/lib/services/wallet";
 
 const Body = z.discriminatedUnion("action", [
   z.object({
@@ -43,6 +43,6 @@ export const POST = handler(async (req) => {
   }
 
   const { transfer, transaction } = await convertBetweenBalances(ctx.busha, ctx.user, body.direction, body.amount);
-  const balances = summarizeBalances(await ctx.busha.getBalances());
+  const balances = await getUserBalances(ctx);
   return ok({ transfer, transaction, balances });
 });

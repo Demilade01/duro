@@ -262,6 +262,19 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
     setMode,
     setUserId,
 
+    getRecipients: () => request<RecipientsListResponse>("GET", "/api/recipients"),
+
+    addRecipient: (body: {
+      label: string;
+      bankName: string;
+      bankCode: string;
+      accountNumber: string;
+      accountName: string;
+    }) => request<RecipientMutationResponse>("POST", "/api/recipients", body),
+
+    deleteRecipient: (id: string) =>
+      request<DeleteRecipientResponse>("DELETE", "/api/recipients", { id }),
+
     onboard: async (body: {
       phone?: string;
       email?: string;
@@ -306,7 +319,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
 
     quoteRemit: (
       body:
-        | { recipientId: string; amountNgn: number; narration?: string }
+        | { recipientId: string; amountNgn: number; narration?: string; feeNgn?: number }
         | {
             newRecipient: {
               label: string;
@@ -317,6 +330,7 @@ export function createDuroClient(init?: { deviceId?: string; mode?: BushaMode; u
             };
             amountNgn: number;
             narration?: string;
+            feeNgn?: number;
           },
     ) => request<RemitQuoteResponse>("POST", "/api/remit", { ...body, action: "QUOTE" }),
 

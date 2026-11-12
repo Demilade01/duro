@@ -20,10 +20,16 @@ import {
 } from "@/components/duro-context";
 import { TUNDE } from "@/lib/demo";
 
-export default function OnboardingFlow() {
+export default function OnboardingFlow({
+  initialMode = "LOGIN",
+  onBackToLanding,
+}: {
+  initialMode?: "ONBOARD" | "LOGIN";
+  onBackToLanding?: () => void;
+} = {}) {
   const { completeOnboarding, signInAccount } = useDuro();
 
-  const [mode, setMode] = useState<"ONBOARD" | "LOGIN">("LOGIN");
+  const [mode, setMode] = useState<"ONBOARD" | "LOGIN">(initialMode);
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [fullName, setFullName] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
@@ -209,9 +215,19 @@ export default function OnboardingFlow() {
             Duro
           </span>
         </div>
-        <span className="text-xs font-medium text-slate-500">
-          Zero-paperwork account · Ready in 60 seconds
-        </span>
+        {onBackToLanding ? (
+          <button
+            type="button"
+            onClick={onBackToLanding}
+            className="h-9 px-3.5 rounded-full bg-white border border-[#E4E7DF] text-xs font-medium text-slate-700 hover:text-slate-900 cursor-pointer"
+          >
+            ← Back to Landing Page
+          </button>
+        ) : (
+          <span className="text-xs font-medium text-slate-500">
+            Zero-paperwork account · Ready in 60 seconds
+          </span>
+        )}
       </header>
 
       {/* Main Card */}

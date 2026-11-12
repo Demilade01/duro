@@ -2,11 +2,31 @@
 
 :root {
   --background: #f7f8f5;
-  --foreground: #0f172a;
-  --surface: #ffffff;
-  --surface-muted: #f0f2ec;
-  --border: #e4e7df;
-  --primary: #0a3622;
+  --card: #ffffff;
+  --muted: #eef0ea;
+  --border: #e2e5dc;
+  --foreground: #111814;
+  --muted-foreground: #4a554e;
+  --subtle: #68736c;
+  --brand: #0a3622;
+  --brand-foreground: #f7f8f5;
+  --accent: #ddf7b6;
+
+  --status-success: #166534;
+  --status-success-subtle: #dcfce7;
+  --status-warning: #9a3412;
+  --status-warning-subtle: #ffedd5;
+  --status-danger: #991b1b;
+  --status-danger-subtle: #fee2e2;
+
+  --radius-pill: 9999px;
+  --radius-card: 1.5rem;
+  --radius-control: 1rem;
+
+  /* App compatibility aliases */
+  --surface: var(--card);
+  --surface-muted: var(--muted);
+  --primary: var(--brand);
   --primary-hover: #14532d;
   --accent-emerald: #10b981;
 }
@@ -14,7 +34,16 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-muted: var(--muted);
+  --color-border: var(--border);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-subtle: var(--subtle);
+  --color-brand: var(--brand);
+  --color-brand-foreground: var(--brand-foreground);
+  --color-accent: var(--accent);
   --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+  --font-serif: var(--font-serif), Georgia, serif;
   --font-display: var(--font-jakarta), system-ui, sans-serif;
   --font-mono: var(--font-jetbrains-mono), monospace;
 }
@@ -26,10 +55,39 @@ body {
   overflow-x: hidden;
 }
 
+.duro-grid-surface {
+  background-color: var(--background);
+  background-image:
+    radial-gradient(
+      ellipse 80% 55% at 50% 100%,
+      color-mix(in srgb, var(--brand) 10%, transparent),
+      transparent 75%
+    ),
+    linear-gradient(to right, color-mix(in srgb, var(--border) 65%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 65%, transparent) 1px, transparent 1px);
+  background-size: 100% 100%, 56px 56px, 56px 56px;
+}
+
+.btn-slide .btn-slide-icon {
+  transition: transform 150ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.btn-slide:hover .btn-slide-icon {
+  transform: translateX(4px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn-slide .btn-slide-icon,
+  .btn-slide:hover .btn-slide-icon {
+    transition: none;
+    transform: none;
+  }
+}
+
 @media print {
   body {
-    background: #ffffff !important;
-    color: #0f172a !important;
+    background: var(--card) !important;
+    color: var(--foreground) !important;
   }
   .no-print {
     display: none !important;

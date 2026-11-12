@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -14,6 +14,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { useDuro } from "@/components/duro-context";
+import LandingPage from "@/components/landing/LandingPage";
 import OnboardingFlow from "./OnboardingFlow";
 import SelfieLivenessModal from "@/components/duro/SelfieLivenessModal";
 
@@ -34,6 +35,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     toast,
     startFreshOnboarding,
   } = useDuro();
+  const [authView, setAuthView] = useState<"LANDING" | "LOGIN" | "ONBOARD">(
+    "LANDING",
+  );
+
+  // Public marketing & design-system routes bypass the dashboard shell
+  if (pathname === "/design-system" || pathname === "/landing") {
+    return <>{children}</>;
+  }
 
   if (loading) {
     return (
@@ -155,7 +164,21 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   if (needsOnboarding || !wallet) {
-    return <OnboardingFlow />;
+    if (authView === "LANDING") {
+      return (
+        <LandingPage
+          onOpenAccount={() => setAuthView("ONBOARD")}
+          onSignIn={() => setAuthView("LOGIN")}
+        />
+      );
+    }
+    return (
+      <OnboardingFlow
+        key={authView}
+        initialMode={authView}
+        onBackToLanding={() => setAuthView("LANDING")}
+      />
+    );
   }
 
   const isLocked = wallet.lock.active;

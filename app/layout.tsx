@@ -1,5 +1,10 @@
 import type { Metadata } from "next";
-import { Plus_Jakarta_Sans, DM_Sans, JetBrains_Mono } from "next/font/google";
+import {
+  Plus_Jakarta_Sans,
+  DM_Sans,
+  JetBrains_Mono,
+  Instrument_Serif,
+} from "next/font/google";
 import "./globals.css";
 import { DuroProvider } from "@/components/duro-context";
 import AppShell from "@/components/shell/AppShell";
@@ -8,6 +13,13 @@ const jakarta = Plus_Jakarta_Sans({
   variable: "--font-jakarta",
   subsets: ["latin"],
   weight: ["500", "600", "700"],
+});
+
+const instrumentSerif = Instrument_Serif({
+  variable: "--font-serif",
+  subsets: ["latin"],
+  weight: ["400"],
+  style: ["normal", "italic"],
 });
 
 const dmSans = DM_Sans({
@@ -36,9 +48,9 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${jakarta.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${jakarta.variable} ${instrumentSerif.variable} ${dmSans.variable} ${jetbrainsMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col bg-[#F7F8F5] text-slate-900">
+      <body className="min-h-full flex flex-col bg-[var(--background)] text-[var(--foreground)]">
         <DuroProvider>
           <AppShell>{children}</AppShell>
         </DuroProvider>
